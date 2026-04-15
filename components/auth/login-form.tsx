@@ -1,6 +1,7 @@
 "use client";
 
 import type { Route } from "next";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -180,9 +181,19 @@ export function LoginForm() {
         )}
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
         {step === "credentials" ? (
-          <Button className="w-full" disabled={pending} type="submit">
-            {pending ? "Signing in..." : "Sign in"}
-          </Button>
+          <>
+            <Button className="w-full" disabled={pending} type="submit">
+              {pending ? "Signing in..." : "Sign in"}
+            </Button>
+            <div className="flex items-center justify-between text-xs">
+              <Link href="/forgot-password" className="text-slate-400 hover:text-sky-300 transition-colors">
+                Forgot password?
+              </Link>
+              <Link href="/signup" className="text-slate-400 hover:text-sky-300 transition-colors">
+                Create account
+              </Link>
+            </div>
+          </>
         ) : null}
       </form>
     </Card>

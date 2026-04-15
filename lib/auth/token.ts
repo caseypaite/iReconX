@@ -63,3 +63,21 @@ export function canAccessRole(role: AppRole, allowedRoles: AppRole[]) {
   return allowedRoles.includes(role);
 }
 
+const RESET_TOKEN_DURATION_SECONDS = 60 * 15; // 15 minutes
+
+export async function signResetToken(userId: string) {
+  return new SignJWT({ purpose: "password-reset" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setSubject(userId)
+    .setIssuedAt()
+    .setExpirationTime(`${RESET_TOKEN_DURATION_SECONDS}s`)
+    .sign(getJwtSecret());
+}
+
+export async function verifyResetToken(token: string) {
+  const { payload } = await jwtVerify(token, getJwtSecret());
+  if (payload["purpose"] !== "password-reset") throw new Error("Invalid token purpose.");
+  if (!payload.sub) throw new Error("Missing subject.");
+  return { userId: payload.sub };
+}
+
