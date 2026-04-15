@@ -5,12 +5,14 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 export type UiPrefs = {
   gradient: "aurora" | "sunset" | "ocean" | "forest" | "midnight" | "none";
   reduceTransparency: boolean;
+  showDock: boolean;
   dockLabels: boolean;
 };
 
 export const defaultUiPrefs: UiPrefs = {
   gradient: "aurora",
   reduceTransparency: false,
+  showDock: true,
   dockLabels: true,
 };
 
@@ -110,6 +112,13 @@ export function DesktopOptionsWindow({ prefs, onChange }: DesktopOptionsWindowPr
         <CardDescription>Customize the application dock behaviour.</CardDescription>
         <div className="mt-4">
           <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-white">Show dock</p>
+              <p className="text-xs text-slate-400">Display the app launcher dock at the bottom of the screen.</p>
+            </div>
+            <Toggle on={prefs.showDock} onToggle={() => onChange({ ...prefs, showDock: !prefs.showDock })} />
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-white">Show dock labels</p>
               <p className="text-xs text-slate-400">Display app name labels under dock icons.</p>

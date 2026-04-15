@@ -15,17 +15,34 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
     ports:
-      - "${HOST_PORT:-7080}:3000"
+      - target: 3000
+        published: "7080"
+        host_ip: 0.0.0.0
+        protocol: tcp
     depends_on:
       db:
         condition: service_healthy
     develop:
       watch:
+        - action: rebuild
+          path: app
+        - action: rebuild
+          path: components
+        - action: rebuild
+          path: lib
+        - action: rebuild
+          path: types
+        - action: rebuild
+          path: middleware.ts
+        - action: rebuild
+          path: next.config.mjs
+        - action: rebuild
+          path: postcss.config.js
+        - action: rebuild
+          path: tailwind.config.ts
+        - action: rebuild
+          path: tsconfig.json
         - action: rebuild
           path: package.json
         - action: rebuild

@@ -33,6 +33,7 @@ import {
 import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { UserProfileWindow } from "@/components/desktop/user-profile-window";
 import { DesktopWindow, type DesktopWindowFrame } from "@/components/desktop/desktop-window";
+import { DataStudioWindow } from "@/components/desktop/data-studio-window";
 import { QueryBuilderCard } from "@/components/dashboard/query-builder";
 import { VisualizationCard } from "@/components/dashboard/visualization-card";
 import { LogoutButton } from "@/components/layout/logout-button";
@@ -57,6 +58,7 @@ type WindowKind =
   | "calculator"
   | "stopwatch"
   | "text-tools"
+  | "data-studio"
   | "profile"
   | "options";
 
@@ -110,6 +112,8 @@ const windowKinds: readonly WindowKind[] = [
   "calculator",
   "stopwatch",
   "text-tools",
+  "data-studio",
+  "profile",
   "options"
 ];
 
@@ -260,6 +264,10 @@ function buildContextMenus(kind: WindowKind, role: AppRole, pathname: string) {
 
   if (kind === "visualization-lab") {
     return ["Chart", "Palette", "Inspect", "Window"];
+  }
+
+  if (kind === "data-studio") {
+    return ["Data", "Transform", "Window"];
   }
 
   if (kind === "about") {
@@ -516,6 +524,13 @@ export function OsShell({
         subtitle: "Chart previews and configuration presets.",
         frame: { x: 96, y: 72, width: 620, height: 420 }
       },
+      "data-studio": {
+        id: "window:data-studio",
+        kind: "data-studio",
+        title: "Data Studio",
+        subtitle: "Governed sources, uploads, pivoting, and summarization.",
+        frame: { x: 48, y: 36, width: 1100, height: 680 }
+      },
       profile: {
         id: "window:profile",
         kind: "profile",
@@ -656,6 +671,7 @@ export function OsShell({
   const hasOpenAdminWindow =
     role === "ADMIN" &&
     windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized);
+  const hasOpenDataStudio = windows.some((windowItem) => windowItem.kind === "data-studio" && !windowItem.minimized);
 
   return (
     <div
@@ -701,7 +717,16 @@ export function OsShell({
             ) : null}
           </div>
           {contextMenus.map((item) =>
-            item === "View" ? (
+            item === "Data" ? (
+              <button
+                key="Data"
+                className={cn("desktop-menu-button", hasOpenDataStudio && "bg-white/10 text-white")}
+                onClick={() => openWindow("data-studio")}
+                type="button"
+              >
+                Data
+              </button>
+            ) : item === "View" ? (
               <div key="View" className="relative" ref={viewMenuRef}>
                 <button
                   className={cn("desktop-menu-button", viewMenuOpen && "bg-white/10 text-white")}
@@ -741,6 +766,16 @@ export function OsShell({
                       type="button"
                     >
                       Minimize All
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+                      onClick={() => {
+                        setUiPrefs((current) => ({ ...current, showDock: !current.showDock }));
+                        setViewMenuOpen(false);
+                      }}
+                      type="button"
+                    >
+                      {uiPrefs.showDock ? "Hide Dock" : "Show Dock"}
                     </button>
                     <div className="my-1 border-t border-white/10" />
                     <button
@@ -861,7 +896,7 @@ export function OsShell({
         </div>
       </header>
 
-      <main className="relative flex min-h-screen flex-col pb-28 pt-11">
+      <main className={cn("relative flex min-h-screen flex-col pt-11", uiPrefs.showDock ? "pb-28" : "pb-0")}>
         <div className="relative flex-1 overflow-hidden bg-slate-950/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[2px]">
           {windows.map((windowItem) => (
             <div key={windowItem.id} className="absolute inset-0" style={{ zIndex: windowItem.zIndex }}>
@@ -883,6 +918,7 @@ export function OsShell({
                 {windowItem.kind === "route" ? children : null}
                 {windowItem.kind === "sql-explorer" ? <QueryBuilderCard /> : null}
                 {windowItem.kind === "visualization-lab" ? <VisualizationCard /> : null}
+                {windowItem.kind === "data-studio" ? <DataStudioWindow /> : null}
                 {windowItem.kind === "profile" ? <UserProfileWindow role={role} userName={userName} /> : null}
 
                 {windowItem.kind === "about" ? <AboutStudioWindow /> : null}
@@ -899,46 +935,48 @@ export function OsShell({
         </div>
       </main>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-        <div className="desktop-dock pointer-events-auto">
-          {dockApps.map((app) => {
-            const isActive =
-              app.windowKind === undefined
-                ? windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized)
-                : windows.some((windowItem) => windowItem.kind === app.windowKind && !windowItem.minimized);
+      {uiPrefs.showDock ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <div className="desktop-dock pointer-events-auto">
+            {dockApps.map((app) => {
+              const isActive =
+                app.windowKind === undefined
+                  ? windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized)
+                  : windows.some((windowItem) => windowItem.kind === app.windowKind && !windowItem.minimized);
 
-            return (
-              <button
-                key={app.id}
-                className="group -mt-2 flex flex-col items-center gap-0 pb-1"
-                onClick={() => {
-                  if (app.windowKind) {
-                    openWindow(app.windowKind);
-                    return;
-                  }
+              return (
+                <button
+                  key={app.id}
+                  className="group -mt-2 flex flex-col items-center gap-0 pb-1"
+                  onClick={() => {
+                    if (app.windowKind) {
+                      openWindow(app.windowKind);
+                      return;
+                    }
 
-                  openRouteWindow();
-                }}
-                type="button"
-              >
-                <span
-                  className={cn(
-                    "desktop-dock-icon",
-                    isActive && "border-sky-300/45 bg-sky-300/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_16px_26px_rgba(14,165,233,0.18)]"
-                  )}
+                    openRouteWindow();
+                  }}
+                  type="button"
                 >
-                  <app.icon className="h-6 w-6 text-slate-100" />
-                </span>
-                {uiPrefs.dockLabels ? (
-                  <span className="text-[10px] font-medium text-slate-200 opacity-0 transition group-hover:opacity-100">
-                    {app.label}
+                  <span
+                    className={cn(
+                      "desktop-dock-icon",
+                      isActive && "border-sky-300/45 bg-sky-300/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_16px_26px_rgba(14,165,233,0.18)]"
+                    )}
+                  >
+                    <app.icon className="h-6 w-6 text-slate-100" />
                   </span>
-                ) : null}
-              </button>
-            );
-          })}
+                  {uiPrefs.dockLabels ? (
+                    <span className="text-[10px] font-medium text-slate-200 opacity-0 transition group-hover:opacity-100">
+                      {app.label}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

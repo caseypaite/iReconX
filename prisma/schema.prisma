@@ -21,6 +21,12 @@ enum DataSourceType {
   BIGQUERY
 }
 
+enum SettingCategory {
+  SECURITY
+  IDENTITIES
+  DATA_SOURCES
+}
+
 enum AuditAction {
   LOGIN
   LOGOUT
@@ -31,31 +37,34 @@ enum AuditAction {
   DATASOURCE_UPDATED
   DATASOURCE_DELETED
   QUERY_EXECUTED
+  SETTINGS_UPDATED
 }
 
 model User {
-  id                String             @id @default(cuid())
-  email             String             @unique
-  name              String?
-   headline         String?
-   location         String?
-   summary          String?
-   experience       String?
-   education        String?
-   skills           String?
-   websiteUrl       String?
-   linkedinUrl      String?
-  mobileNumber      String?            @unique
-  passwordHash      String
-  role              Role               @default(USER)
-  isActive          Boolean            @default(true)
-  sessionVersion    Int                @default(0)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  auditLogs         AuditLog[]         @relation("AuditActor")
-  dataSources       DataSource[]       @relation("DataSourceOwner")
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  headline           String?
+  location           String?
+  summary            String?
+  experience         String?
+  education          String?
+  skills             String?
+  websiteUrl         String?
+  linkedinUrl        String?
+  mobileNumber       String?             @unique
+  passwordHash       String
+  role               Role                @default(USER)
+  isActive           Boolean             @default(true)
+  sessionVersion     Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  auditLogs          AuditLog[]          @relation("AuditActor")
+  dataSources        DataSource[]        @relation("DataSourceOwner")
+  dataSourceAccesses DataSourceAccess[]
   loginOtpChallenges LoginOtpChallenge[]
-  notes             Note[]             @relation("UserNotes")
+  notes              Note[]              @relation("UserNotes")
+  appSettings        AppSetting[]        @relation("AppSettingActor")
 }
 
 model Note {
@@ -79,8 +88,20 @@ model DataSource {
   configCiphertext String
   createdById      String?
   createdBy        User?          @relation("DataSourceOwner", fields: [createdById], references: [id], onDelete: SetNull)
+  accessList       DataSourceAccess[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+}
+
+model DataSourceAccess {
+  dataSourceId String
+  userId       String
+  dataSource   DataSource @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([dataSourceId, userId])
+  @@index([userId])
 }
 
 model AuditLog {
@@ -97,16 +118,27 @@ model AuditLog {
   @@index([entityType, createdAt])
 }
 
+model AppSetting {
+  key         String          @id
+  category    SettingCategory
+  value       String
+  isSecret    Boolean         @default(false)
+  updatedById String?
+  updatedBy   User?           @relation("AppSettingActor", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
 model LoginOtpChallenge {
-  id         String   @id
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  codeHash   String
+  id          String   @id
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash    String
   destination String
-  expiresAt  DateTime
-  consumedAt DateTime?
-  attempts   Int      @default(0)
-  createdAt  DateTime @default(now())
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([expiresAt])

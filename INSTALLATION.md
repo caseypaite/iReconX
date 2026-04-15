@@ -88,8 +88,8 @@ docker compose up --build --watch
 This setup:
 
 - starts PostgreSQL in a sibling container
-- runs the Next.js dev server on `http://localhost:3000`
-- rebuilds the app image when code changes are detected, so the container image stays current during development
+- runs the Next.js dev server on `http://localhost:7080` and publishes it on all host interfaces
+- rebuilds the app image when code changes are detected, so container restarts keep using the latest baked-in code
 
 If your local `.env` still points `DATABASE_URL` at `localhost`, Compose overrides it for the app container so it connects to the `db` service automatically.
 

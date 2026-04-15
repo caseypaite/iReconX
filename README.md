@@ -78,7 +78,7 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 6. Start the app with `npm run dev`.
 7. Open `http://localhost:3000` and sign in with the seeded admin account.
 
-For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres and rebuild the app image whenever code changes are detected.
+For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on `http://localhost:7080`, publish it on all host interfaces, and rebuild the app image whenever code changes are detected.
 
 See [INSTALLATION.md](./INSTALLATION.md) for the full setup flow and environment details.
 

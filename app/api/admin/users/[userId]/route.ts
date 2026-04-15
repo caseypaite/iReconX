@@ -81,7 +81,9 @@ export async function PATCH(
         mobileNumber: true,
         role: true,
         isActive: true,
-        sessionVersion: true
+        sessionVersion: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 

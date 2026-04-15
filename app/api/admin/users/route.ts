@@ -13,7 +13,8 @@ const createUserSchema = z.object({
   name: z.string().min(1).optional(),
   password: z.string().min(8),
   mobileNumber: z.string().min(8).optional(),
-  role: z.nativeEnum(Role).default(Role.USER)
+  role: z.nativeEnum(Role).default(Role.USER),
+  isActive: z.boolean().optional()
 });
 
 export async function GET(request: NextRequest) {
@@ -63,7 +64,8 @@ export async function POST(request: NextRequest) {
         name: parsed.data.name,
         mobileNumber: normalizeMobileNumber(parsed.data.mobileNumber),
         passwordHash,
-        role: parsed.data.role
+        role: parsed.data.role,
+        isActive: parsed.data.isActive
       },
       select: {
         id: true,
@@ -71,7 +73,9 @@ export async function POST(request: NextRequest) {
         name: true,
         mobileNumber: true,
         role: true,
-        isActive: true
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
