@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum DataSourceType {
+  POSTGRESQL
+  MYSQL
+  MONGODB
+  REST_API
+  S3
+  BIGQUERY
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  DATASOURCE_CREATED
+  DATASOURCE_UPDATED
+  DATASOURCE_DELETED
+  QUERY_EXECUTED
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  name              String?
+   headline         String?
+   location         String?
+   summary          String?
+   experience       String?
+   education        String?
+   skills           String?
+   websiteUrl       String?
+   linkedinUrl      String?
+  mobileNumber      String?            @unique
+  passwordHash      String
+  role              Role               @default(USER)
+  isActive          Boolean            @default(true)
+  sessionVersion    Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  auditLogs         AuditLog[]         @relation("AuditActor")
+  dataSources       DataSource[]       @relation("DataSourceOwner")
+  loginOtpChallenges LoginOtpChallenge[]
+  notes             Note[]             @relation("UserNotes")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserNotes", fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @default("")
+  color     String   @default("yellow")
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model DataSource {
+  id               String         @id @default(cuid())
+  name             String
+  description      String?
+  type             DataSourceType
+  configCiphertext String
+  createdById      String?
+  createdBy        User?          @relation("DataSourceOwner", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  action     AuditAction
+  entityType String
+  entityId   String?
+  metadata   Json?
+  actorId    String?
+  actor      User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime    @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entityType, createdAt])
+}
+
+model LoginOtpChallenge {
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  destination String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}

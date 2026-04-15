@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/ireconx?schema=public}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-long-random-secret}
+      ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-replace-with-a-second-long-random-secret}
+      OTP_MESSAGE_ENDPOINT: ${OTP_MESSAGE_ENDPOINT:-https://provider.example/api/v1/message/single}
+      OTP_MESSAGE_API_KEY: ${OTP_MESSAGE_API_KEY:-replace-with-provider-api-key}
+      SEED_ADMIN_EMAIL: "${SEED_ADMIN_EMAIL:-admin@ireconx.local}"
+      SEED_ADMIN_PASSWORD: "${SEED_ADMIN_PASSWORD:-ChangeMe123!}"
+      SEED_ADMIN_MOBILE_NUMBER: ${SEED_ADMIN_MOBILE_NUMBER:-}
+      NEXT_TELEMETRY_DISABLED: "1"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "${HOST_PORT:-7080}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: package-lock.json
+        - action: rebuild
+          path: Dockerfile.dev
+        - action: rebuild
+          path: prisma
+    command: sh -c "npm run db:generate && npm run db:push && npm run dev -- --hostname 0.0.0.0"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ireconx
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ireconx"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
