@@ -4,7 +4,8 @@ import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
 import { buildQueryPayload } from "@/lib/explorer/query-builder";
 import { useExplorerStore } from "@/lib/stores/explorer-store";
@@ -19,10 +20,10 @@ export function QueryBuilderCard() {
     <Card className="h-full">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <CardTitle>SQL / Filter Builder</CardTitle>
-          <CardDescription>
-            The builder state translates directly into a payload that backend query endpoints can validate and execute.
-          </CardDescription>
+          <HoverSubtitleTitle
+            subtitle="The builder state translates directly into a payload that backend query endpoints can validate and execute."
+            title="SQL / Filter Builder"
+          />
         </div>
         <Badge>{draft.mode === "builder" ? "No-code mode" : "SQL mode"}</Badge>
       </div>

@@ -5,7 +5,8 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
 
 type Step = "email" | "otp" | "password" | "done";
@@ -134,13 +135,17 @@ export function ForgotPasswordForm() {
     <Card className="w-full max-w-md p-8">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <CardTitle>{titles[step]}</CardTitle>
-          <CardDescription>
-            {step === "email" && "Enter your account email to receive a verification code."}
-            {step === "otp" && `We sent a 6-digit code to ${destinationHint || "your registered mobile number"}.`}
-            {step === "password" && "Choose a new password for your account."}
-            {step === "done" && "Your password has been updated. You can now sign in."}
-          </CardDescription>
+          <HoverSubtitleTitle
+            subtitle={
+              <>
+                {step === "email" && "Enter your account email to receive a verification code."}
+                {step === "otp" && `We sent a 6-digit code to ${destinationHint || "your registered mobile number"}.`}
+                {step === "password" && "Choose a new password for your account."}
+                {step === "done" && "Your password has been updated. You can now sign in."}
+              </>
+            }
+            title={titles[step]}
+          />
         </div>
         {step === "otp" && <Badge className="border-sky-500/40 bg-sky-500/10 text-sky-200">OTP</Badge>}
       </div>

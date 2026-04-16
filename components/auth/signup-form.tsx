@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
 
 export function SignupForm() {
@@ -49,8 +50,7 @@ export function SignupForm() {
   return (
     <Card className="w-full max-w-md p-8">
       <div>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>Fill in your details to get started.</CardDescription>
+        <HoverSubtitleTitle subtitle="Fill in your details to get started." title="Create your account" />
       </div>
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">

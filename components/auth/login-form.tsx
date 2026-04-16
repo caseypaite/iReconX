@@ -7,10 +7,11 @@ import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
 
-export function LoginForm() {
+export function LoginForm({ siteName }: { siteName: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,12 +99,14 @@ export function LoginForm() {
     <Card className="w-full max-w-md p-8">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <CardTitle>{step === "credentials" ? "Sign in to GlassUI" : "Enter verification code"}</CardTitle>
-          <CardDescription>
-            {step === "credentials"
-              ? "Use an Admin or Analyst account to access the correct dashboard."
-              : `We sent a 6-digit code to ${destinationHint ?? "your registered mobile number"}.`}
-          </CardDescription>
+          <HoverSubtitleTitle
+            subtitle={
+              step === "credentials"
+                ? "Use an Admin or Analyst account to access the correct dashboard."
+                : `We sent a 6-digit code to ${destinationHint ?? "your registered mobile number"}.`
+            }
+            title={step === "credentials" ? `Sign in to ${siteName}` : "Enter verification code"}
+          />
         </div>
         {step === "otp" ? <Badge className="border-sky-500/40 bg-sky-500/10 text-sky-200">2FA</Badge> : null}
       </div>
@@ -120,7 +123,7 @@ export function LoginForm() {
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="admin@ireconx.local"
+                placeholder="admin@example.com"
                 required
               />
             </div>

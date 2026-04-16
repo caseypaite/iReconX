@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AdminAssignableUser, AdminDataSourceRecord } from "@/lib/admin/data-sources";
 import { Button } from "@/components/ui/button";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -221,8 +222,12 @@ export function DataSourceManager() {
               onClick={() => selectDataSource(dataSource)}
               type="button"
             >
-              <p className="font-medium">{dataSource.name}</p>
-              <p className="mt-1 text-xs text-slate-400">{typeLabels[dataSource.type]}</p>
+              <HoverHelperLabel
+                helper={typeLabels[dataSource.type]}
+                label={dataSource.name}
+                labelClassName="font-medium"
+                wrapperClassName="max-w-full"
+              />
               <p className="mt-2 text-xs text-slate-500">
                 {dataSource.config.host}:{dataSource.config.port}
               </p>
@@ -340,7 +345,12 @@ export function DataSourceManager() {
               </div>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium text-slate-200">Allowed users</label>
+              <HoverHelperLabel
+                as="p"
+                helper="Choose the registered users who should be allowed to access this governed data source."
+                label="Allowed users"
+                labelClassName="text-sm font-medium text-slate-200"
+              />
               <div className="grid gap-2 rounded-[18px] border border-white/10 bg-slate-950/20 p-4 md:grid-cols-2">
                 {assignableUsers.length === 0 ? (
                   <p className="text-sm text-slate-400">No registered users available to assign yet.</p>
@@ -364,17 +374,19 @@ export function DataSourceManager() {
                           type="checkbox"
                         />
                         <span>
-                          <span className="block font-medium text-white">{user.name || user.email}</span>
-                          <span className="mt-0.5 block text-xs text-slate-400">
-                            {user.email} · {user.role} · {user.isActive ? "Active" : "Inactive"}
-                          </span>
+                          <HoverHelperLabel
+                            as="span"
+                            helper={`${user.email} · ${user.role} · ${user.isActive ? "Active" : "Inactive"}`}
+                            label={user.name || user.email}
+                            labelClassName="block font-medium text-white"
+                            wrapperClassName="max-w-full"
+                          />
                         </span>
                       </label>
                     );
                   })
                 )}
               </div>
-              <p className="text-xs text-slate-400">Choose the registered users who should be allowed to access this governed data source.</p>
             </div>
           </div>
 

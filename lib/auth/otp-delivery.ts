@@ -1,3 +1,5 @@
+import { loadSiteName } from "@/lib/site-name";
+
 type ProviderSuccessResponse = {
   success?: boolean;
   messageId?: string;
@@ -14,12 +16,14 @@ function getProviderConfig() {
   return { endpoint, apiKey };
 }
 
-function buildOtpMessage(code: string) {
-  return `Your iReconX verification code is ${code}. It expires in 5 minutes.`;
+async function buildOtpMessage(code: string) {
+  const siteName = await loadSiteName();
+  return `Your ${siteName} verification code is ${code}. It expires in 5 minutes.`;
 }
 
 export async function sendOtpMessage(number: string, code: string) {
   const { endpoint, apiKey } = getProviderConfig();
+  const message = await buildOtpMessage(code);
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -28,7 +32,7 @@ export async function sendOtpMessage(number: string, code: string) {
     },
     body: JSON.stringify({
       number,
-      message: buildOtpMessage(code)
+      message
     }),
     cache: "no-store"
   });

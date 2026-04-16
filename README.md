@@ -70,7 +70,7 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 
 ## Quick start
 
-1. Copy `.env.example` to `.env`.
+1. Copy `.env.example` to `.env`, or create a Compose-focused `.env` that points `DATABASE_URL` at the `db` service.
 2. Install dependencies with `npm install`.
 3. Generate the Prisma client with `npm run db:generate`.
 4. Push the schema with `npm run db:push`.
@@ -78,7 +78,7 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 6. Start the app with `npm run dev`.
 7. Open `http://localhost:3000` and sign in with the seeded admin account.
 
-For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on `http://localhost:7080`, publish it on all host interfaces, and rebuild the app image whenever code changes are detected.
+For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on the host port configured by `APP_PORT` (the included `.env` uses `http://localhost:17080`), publish it on all host interfaces, rebuild the app image whenever code changes are detected, and seed the default admin only when the database does not already contain an admin account.
 
 See [INSTALLATION.md](./INSTALLATION.md) for the full setup flow and environment details.
 
@@ -89,14 +89,27 @@ See [INSTALLATION.md](./INSTALLATION.md) for the full setup flow and environment
 | `DATABASE_URL` | Yes | PostgreSQL connection string for Prisma |
 | `JWT_SECRET` | Yes | Secret used to sign and verify session JWTs |
 | `ENCRYPTION_SECRET` | Recommended | Secret used to encrypt stored data source configuration |
+| `OTP_SECRET` | Optional | Secret used to sign OTP challenges; falls back to `JWT_SECRET` when empty |
+| `SITE_NAME` | Optional | Brand name shown across auth screens, desktop shell, metadata, and OTP copy |
 | `SITE_URL` | Recommended for domains | Canonical public origin for the app, used for domain-based deployment metadata |
+| `AI_COPILOT_ENDPOINT` | Optional | GitHub Copilot / Models OpenAI-compatible endpoint for plugin generation |
+| `AI_COPILOT_MODEL` | Optional | GitHub-hosted model ID used for plugin generation |
+| `AI_COPILOT_API_KEY` | Optional | GitHub token for the configured GitHub Models endpoint |
+| `AI_GEMINI_ENDPOINT` | Optional | Gemini OpenAI-compatible endpoint for plugin generation |
+| `AI_GEMINI_MODEL` | Optional | Gemini model ID used for plugin generation |
+| `AI_GEMINI_API_KEY` | Optional | Gemini API key |
+| `AI_MISTRAL_ENDPOINT` | Optional | Mistral chat completions endpoint for plugin generation |
+| `AI_MISTRAL_MODEL` | Optional | Mistral model ID used for plugin generation |
+| `AI_MISTRAL_API_KEY` | Optional | Mistral API key |
 | `OTP_MESSAGE_ENDPOINT` | For OTP delivery | Full URL for the external `POST /api/v1/message/single` endpoint |
 | `OTP_MESSAGE_API_KEY` | For OTP delivery | API key sent in the `x-api-key` header to the external provider |
 | `SEED_ADMIN_EMAIL` | For seeding | Email for the initial admin account |
 | `SEED_ADMIN_PASSWORD` | For seeding | Password for the initial admin account |
 | `SEED_ADMIN_MOBILE_NUMBER` | Optional | Seed-time mobile number; 10-digit inputs are treated as Indian and prefixed with `91` |
 
-`SITE_URL` can also be managed from the admin control panel under **Identities -> Site URL**. For a deployed domain, set it to your full HTTPS origin, for example `https://app.example.com`.
+`SITE_NAME`, the AI provider settings, and `SITE_URL` can also be managed from the admin control panel under **Identities**. For a deployed domain, set `SITE_URL` to your full HTTPS origin, for example `https://ireconx.sigstack.com`.
+
+The Data Studio **Plugins** panel can generate chained JavaScript plugins using GitHub Copilot / Models, Gemini, or Mistral once at least one provider is configured.
 
 ## Available scripts
 

@@ -33,12 +33,16 @@ import {
 import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { UserProfileWindow } from "@/components/desktop/user-profile-window";
 import { DesktopWindow, type DesktopWindowFrame } from "@/components/desktop/desktop-window";
+import { DataImportWindow } from "@/components/desktop/data-import-window";
 import { DataStudioWindow } from "@/components/desktop/data-studio-window";
+import { TransformPipelineWindow } from "@/components/desktop/transform-pipeline-window";
 import { QueryBuilderCard } from "@/components/dashboard/query-builder";
 import { VisualizationCard } from "@/components/dashboard/visualization-card";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import type { NavIcon } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/types/auth";
@@ -59,6 +63,8 @@ type WindowKind =
   | "stopwatch"
   | "text-tools"
   | "data-studio"
+  | "data-import"
+  | "transform-studio"
   | "profile"
   | "options";
 
@@ -113,6 +119,8 @@ const windowKinds: readonly WindowKind[] = [
   "stopwatch",
   "text-tools",
   "data-studio",
+  "data-import",
+  "transform-studio",
   "profile",
   "options"
 ];
@@ -257,7 +265,7 @@ function getRouteDescriptor(pathname: string, role: AppRole, title: string, subt
   };
 }
 
-function buildContextMenus(kind: WindowKind, role: AppRole, pathname: string) {
+function buildContextMenus(kind: WindowKind, role: AppRole, pathname: string, siteName: string) {
   if (kind === "sql-explorer") {
     return ["Query", "Data", "Visualize", "Window"];
   }
@@ -267,11 +275,19 @@ function buildContextMenus(kind: WindowKind, role: AppRole, pathname: string) {
   }
 
   if (kind === "data-studio") {
-    return ["Data", "Transform", "Window"];
+    return ["Data", "Window"];
+  }
+
+  if (kind === "data-import") {
+    return ["Import", "Window"];
+  }
+
+  if (kind === "transform-studio") {
+    return ["Data", "View", "Window"];
   }
 
   if (kind === "about") {
-    return ["GlassUI", "Version", "Support"];
+    return [siteName, "Version", "Support"];
   }
 
   if (kind === "notepad") {
@@ -303,7 +319,7 @@ function PeachLogo({ className }: { className?: string }) {
   );
 }
 
-function AboutStudioWindow() {
+function AboutStudioWindow({ siteName }: { siteName: string }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
       <Card>
@@ -312,8 +328,10 @@ function AboutStudioWindow() {
             <PeachLogo className="h-6 w-6" />
           </div>
           <div>
-            <CardTitle>GlassUI</CardTitle>
-            <CardDescription>Desktop-mode analytics workspace with a glass-styled floating window manager.</CardDescription>
+            <HoverSubtitleTitle
+              subtitle="Desktop-mode analytics workspace with a glass-styled floating window manager."
+              title={siteName}
+            />
           </div>
         </div>
         <div className="mt-5 space-y-3 text-sm text-slate-300">
@@ -325,20 +343,34 @@ function AboutStudioWindow() {
         </div>
       </Card>
       <Card>
-        <CardTitle>Design language</CardTitle>
-        <CardDescription>Dark translucent panels, soft shadows, rounded chrome, and spotlight-like accents.</CardDescription>
+        <HoverSubtitleTitle
+          subtitle="Dark translucent panels, soft shadows, rounded chrome, and spotlight-like accents."
+          title="Design language"
+        />
         <div className="mt-4 grid gap-3">
           <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
-            <p className="font-medium text-white">Menu bar</p>
-            <p className="mt-1 text-sm text-slate-300">Context-sensitive to the focused application window.</p>
+            <HoverHelperLabel
+              helper="Context-sensitive to the focused application window."
+              label="Menu bar"
+              labelClassName="font-medium text-white"
+              tooltipClassName="text-sm"
+            />
           </div>
           <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
-            <p className="font-medium text-white">Dock</p>
-            <p className="mt-1 text-sm text-slate-300">Compact launchers for core apps, with utilities grouped in the menu bar.</p>
+            <HoverHelperLabel
+              helper="Compact launchers for core apps, with utilities grouped in the menu bar."
+              label="Dock"
+              labelClassName="font-medium text-white"
+              tooltipClassName="text-sm"
+            />
           </div>
           <div className="rounded-[18px] border border-white/10 bg-white/5 p-4">
-            <p className="font-medium text-white">Windows</p>
-            <p className="mt-1 text-sm text-slate-300">Draggable, resizable, minimizable, and maximizable app panels.</p>
+            <HoverHelperLabel
+              helper="Draggable, resizable, minimizable, and maximizable app panels."
+              label="Windows"
+              labelClassName="font-medium text-white"
+              tooltipClassName="text-sm"
+            />
           </div>
         </div>
       </Card>
@@ -352,6 +384,7 @@ export function OsShell({
   role,
   userEmail,
   userName,
+  siteName,
   navItems,
   children
 }: PropsWithChildren<{
@@ -360,6 +393,7 @@ export function OsShell({
   role: AppRole;
   userEmail: string;
   userName?: string | null;
+  siteName: string;
   navItems: readonly NavItem[];
 }>) {
   const pathname = usePathname();
@@ -375,6 +409,7 @@ export function OsShell({
   const [glassMenuOpen, setGlassMenuOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const [dataMenuOpen, setDataMenuOpen] = useState(false);
   const [uiPrefs, setUiPrefs] = useState<UiPrefs>(defaultUiPrefs);
 
   const glassMenuRef = useRef<HTMLDivElement>(null);
@@ -382,13 +417,15 @@ export function OsShell({
   const adminMenuRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const viewMenuRef = useRef<HTMLDivElement>(null);
+  const dataMenuRef = useRef<HTMLDivElement>(null);
 
-  useClickOutside([glassMenuRef, utilityMenuRef, adminMenuRef, calendarRef, viewMenuRef], () => {
+  useClickOutside([glassMenuRef, utilityMenuRef, adminMenuRef, calendarRef, viewMenuRef, dataMenuRef], () => {
     setGlassMenuOpen(false);
     setUtilityMenuOpen(false);
     setAdminMenuOpen(false);
     setCalendarOpen(false);
     setViewMenuOpen(false);
+    setDataMenuOpen(false);
   });
 
   useEffect(() => {
@@ -414,6 +451,7 @@ export function OsShell({
     setGlassMenuOpen(false);
     setCalendarOpen(false);
     setViewMenuOpen(false);
+    setDataMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -531,6 +569,20 @@ export function OsShell({
         subtitle: "Governed sources, uploads, pivoting, and summarization.",
         frame: { x: 48, y: 36, width: 1100, height: 680 }
       },
+      "data-import": {
+        id: "window:data-import",
+        kind: "data-import",
+        title: "Data Import",
+        subtitle: "Guided CSV and Excel import with type conversion.",
+        frame: { x: 140, y: 72, width: 760, height: 720 }
+      },
+      "transform-studio": {
+        id: "window:transform-studio",
+        kind: "transform-studio",
+        title: "Transform Studio",
+        subtitle: "Visual plugin chains with draggable blocks and wires.",
+        frame: { x: 90, y: 48, width: 1280, height: 760 }
+      },
       profile: {
         id: "window:profile",
         kind: "profile",
@@ -542,7 +594,7 @@ export function OsShell({
       about: {
         id: "window:about",
         kind: "about",
-        title: "About GlassUI",
+        title: `About ${siteName}`,
         subtitle: "System profile and desktop mode summary.",
         frame: { x: 80, y: 60, width: 680, height: 420 }
       },
@@ -666,12 +718,13 @@ export function OsShell({
     setWindows((previous) => previous.map((w) => ({ ...w, minimized: true })));
   }
 
-  const contextMenus = buildContextMenus(activeWindow?.kind ?? "route", role, pathname);
+  const contextMenus = buildContextMenus(activeWindow?.kind ?? "route", role, pathname, siteName);
   const hasOpenUtility = utilityApps.some((app) => windows.some((windowItem) => windowItem.kind === app.kind && !windowItem.minimized));
   const hasOpenAdminWindow =
     role === "ADMIN" &&
     windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized);
   const hasOpenDataStudio = windows.some((windowItem) => windowItem.kind === "data-studio" && !windowItem.minimized);
+  const hasOpenTransformStudio = windows.some((windowItem) => windowItem.kind === "transform-studio" && !windowItem.minimized);
 
   return (
     <div
@@ -695,7 +748,7 @@ export function OsShell({
               type="button"
             >
               <PeachLogo className="h-4 w-4" />
-              GlassUI
+              {siteName}
             </button>
             {glassMenuOpen ? (
               <div className="absolute left-0 top-full mt-2 min-w-44 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
@@ -711,21 +764,57 @@ export function OsShell({
                   type="button"
                 >
                   <Info className="h-4 w-4" />
-                  <span className="flex-1">About GlassUI</span>
+                  <span className="flex-1">{`About ${siteName}`}</span>
                 </button>
               </div>
             ) : null}
           </div>
           {contextMenus.map((item) =>
             item === "Data" ? (
-              <button
-                key="Data"
-                className={cn("desktop-menu-button", hasOpenDataStudio && "bg-white/10 text-white")}
-                onClick={() => openWindow("data-studio")}
-                type="button"
-              >
-                Data
-              </button>
+              <div key="Data" className="relative" ref={dataMenuRef}>
+                <button
+                  className={cn(
+                    "desktop-menu-button",
+                    (dataMenuOpen || hasOpenDataStudio || hasOpenTransformStudio) && "bg-white/10 text-white"
+                  )}
+                  onClick={() => setDataMenuOpen((current) => !current)}
+                  type="button"
+                >
+                  Data
+                </button>
+                {dataMenuOpen ? (
+                  <div className="absolute left-0 top-full mt-2 min-w-56 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+                    <button
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
+                        hasOpenDataStudio && "bg-sky-400/15 text-white"
+                      )}
+                      onClick={() => {
+                        openWindow("data-studio");
+                        setDataMenuOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <DatabaseZap className="h-4 w-4" />
+                      <span className="flex-1">Data Studio</span>
+                    </button>
+                    <button
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
+                        hasOpenTransformStudio && "bg-sky-400/15 text-white"
+                      )}
+                      onClick={() => {
+                        openWindow("transform-studio");
+                        setDataMenuOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span className="flex-1">Transform</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             ) : item === "View" ? (
               <div key="View" className="relative" ref={viewMenuRef}>
                 <button
@@ -918,12 +1007,16 @@ export function OsShell({
                 {windowItem.kind === "route" ? children : null}
                 {windowItem.kind === "sql-explorer" ? <QueryBuilderCard /> : null}
                 {windowItem.kind === "visualization-lab" ? <VisualizationCard /> : null}
-                {windowItem.kind === "data-studio" ? <DataStudioWindow /> : null}
+                {windowItem.kind === "data-studio" ? <DataStudioWindow onOpenImportWizard={() => openWindow("data-import")} /> : null}
+                {windowItem.kind === "data-import" ? <DataImportWindow /> : null}
+                {windowItem.kind === "transform-studio" ? <TransformPipelineWindow role={role} /> : null}
                 {windowItem.kind === "profile" ? <UserProfileWindow role={role} userName={userName} /> : null}
 
-                {windowItem.kind === "about" ? <AboutStudioWindow /> : null}
+                {windowItem.kind === "about" ? <AboutStudioWindow siteName={siteName} /> : null}
                 {windowItem.kind === "notepad" ? <NotepadAccessory /> : null}
-                {windowItem.kind === "calculator" ? <CalculatorAccessory /> : null}
+                {windowItem.kind === "calculator" ? (
+                  <CalculatorAccessory isFocused={activeWindow?.id === windowItem.id} />
+                ) : null}
                 {windowItem.kind === "stopwatch" ? <StopwatchAccessory /> : null}
                 {windowItem.kind === "text-tools" ? <TextToolsAccessory /> : null}
                 {windowItem.kind === "options" ? (

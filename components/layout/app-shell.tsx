@@ -1,6 +1,7 @@
 import { PropsWithChildren } from "react";
 
 import { OsShell } from "@/components/desktop/os-shell";
+import { loadSiteName } from "@/lib/site-name";
 import type { NavEntry } from "@/lib/navigation";
 import type { AppRole } from "@/types/auth";
 
@@ -13,7 +14,7 @@ type AppShellProps = PropsWithChildren<{
   navItems: readonly NavEntry[];
 }>;
 
-export function AppShell({
+export async function AppShell({
   title,
   subtitle,
   role,
@@ -22,8 +23,18 @@ export function AppShell({
   navItems,
   children
 }: AppShellProps) {
+  const siteName = await loadSiteName();
+
   return (
-    <OsShell navItems={navItems} role={role} subtitle={subtitle} title={title} userEmail={userEmail} userName={userName}>
+    <OsShell
+      navItems={navItems}
+      role={role}
+      siteName={siteName}
+      subtitle={subtitle}
+      title={title}
+      userEmail={userEmail}
+      userName={userName}
+    >
       {children}
     </OsShell>
   );

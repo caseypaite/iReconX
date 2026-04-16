@@ -7,6 +7,18 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/ireconx?schema=public}
       JWT_SECRET: ${JWT_SECRET:-replace-with-a-long-random-secret}
       ENCRYPTION_SECRET: ${ENCRYPTION_SECRET:-replace-with-a-second-long-random-secret}
+      OTP_SECRET: ${OTP_SECRET:-}
+      SITE_NAME: "${SITE_NAME:-iReconX Analytics Studio}"
+      SITE_URL: ${SITE_URL:-http://localhost:7080}
+      AI_COPILOT_ENDPOINT: ${AI_COPILOT_ENDPOINT:-https://models.github.ai/inference/chat/completions}
+      AI_COPILOT_MODEL: ${AI_COPILOT_MODEL:-openai/gpt-4.1}
+      AI_COPILOT_API_KEY: ${AI_COPILOT_API_KEY:-}
+      AI_GEMINI_ENDPOINT: ${AI_GEMINI_ENDPOINT:-https://generativelanguage.googleapis.com/v1beta/openai/chat/completions}
+      AI_GEMINI_MODEL: ${AI_GEMINI_MODEL:-gemini-2.5-flash}
+      AI_GEMINI_API_KEY: ${AI_GEMINI_API_KEY:-}
+      AI_MISTRAL_ENDPOINT: ${AI_MISTRAL_ENDPOINT:-https://api.mistral.ai/v1/chat/completions}
+      AI_MISTRAL_MODEL: ${AI_MISTRAL_MODEL:-mistral-large-latest}
+      AI_MISTRAL_API_KEY: ${AI_MISTRAL_API_KEY:-}
       OTP_MESSAGE_ENDPOINT: ${OTP_MESSAGE_ENDPOINT:-https://provider.example/api/v1/message/single}
       OTP_MESSAGE_API_KEY: ${OTP_MESSAGE_API_KEY:-replace-with-provider-api-key}
       SEED_ADMIN_EMAIL: "${SEED_ADMIN_EMAIL:-admin@ireconx.local}"
@@ -17,7 +29,7 @@ services:
       WATCHPACK_POLLING: "true"
     ports:
       - target: 3000
-        published: "7080"
+        published: "${APP_PORT:-17080}"
         host_ip: 0.0.0.0
         protocol: tcp
     depends_on:
@@ -51,7 +63,7 @@ services:
           path: Dockerfile.dev
         - action: rebuild
           path: prisma
-    command: sh -c "npm run db:generate && npm run db:push && npm run dev -- --hostname 0.0.0.0"
+    command: sh -c "npm run db:generate && npm run db:push && npm run db:seed && npm run dev -- --hostname 0.0.0.0"
 
   db:
     image: postgres:16-alpine
@@ -59,8 +71,6 @@ services:
       POSTGRES_DB: ireconx
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

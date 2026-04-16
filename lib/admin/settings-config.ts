@@ -9,7 +9,7 @@ export const adminSettingCategories = [
   {
     key: "IDENTITIES",
     label: "Identities",
-    description: "Admin seed identity and OTP delivery settings used by sign-in and account recovery flows."
+    description: "Branding, admin identity, and OTP delivery settings used across sign-in and recovery."
   },
   {
     key: "DATA_SOURCES",
@@ -49,6 +49,16 @@ export const adminSettingDefinitions = [
     helperText: "Optional. Leave blank to fall back to JWT_SECRET.",
     inputType: "password",
     isSecret: true,
+    required: false
+  },
+  {
+    key: "SITE_NAME",
+    category: "IDENTITIES",
+    label: "Site name",
+    description: "Brand name shown across the auth screens, desktop shell, and metadata for this instance.",
+    helperText: "Optional. Leave blank to use the default iReconX Analytics Studio branding.",
+    inputType: "text",
+    isSecret: false,
     required: false
   },
   {
@@ -121,6 +131,7 @@ export const adminSettingsSchema: z.ZodType<AdminSettingValueMap> = z
     JWT_SECRET: z.string().min(1, "JWT secret is required."),
     ENCRYPTION_SECRET: z.string(),
     OTP_SECRET: z.string(),
+    SITE_NAME: z.string(),
     SITE_URL: z.union([z.literal(""), z.string().url("Site URL must be a valid URL.")]),
     OTP_MESSAGE_ENDPOINT: z.union([z.literal(""), z.string().url("OTP message endpoint must be a valid URL.")]),
     OTP_MESSAGE_API_KEY: z.string(),

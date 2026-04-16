@@ -1,15 +1,19 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public", "adhoc_analysis", "import_archive"]
 }
 
 enum Role {
   ADMIN
   USER
+
+  @@schema("public")
 }
 
 enum DataSourceType {
@@ -19,12 +23,31 @@ enum DataSourceType {
   REST_API
   S3
   BIGQUERY
+
+  @@schema("public")
 }
 
 enum SettingCategory {
   SECURITY
   IDENTITIES
   DATA_SOURCES
+
+  @@schema("public")
+}
+
+enum PluginScope {
+  PERSONAL
+  SHARED
+
+  @@schema("public")
+}
+
+enum PluginRuntime {
+  BROWSER
+  SERVER
+  BOTH
+
+  @@schema("public")
 }
 
 enum AuditAction {
@@ -38,6 +61,23 @@ enum AuditAction {
   DATASOURCE_DELETED
   QUERY_EXECUTED
   SETTINGS_UPDATED
+
+  @@schema("public")
+}
+
+enum TemporaryDatasetFormat {
+  CSV
+  XLS
+  XLSX
+
+  @@schema("adhoc_analysis")
+}
+
+enum PersistentDatasetOrigin {
+  IMPORT
+  WEB_SCRAPE
+
+  @@schema("import_archive")
 }
 
 model User {
@@ -65,6 +105,12 @@ model User {
   loginOtpChallenges LoginOtpChallenge[]
   notes              Note[]              @relation("UserNotes")
   appSettings        AppSetting[]        @relation("AppSettingActor")
+  pluginDefinitions  PluginDefinition[]  @relation("PluginOwner")
+  aiProviderSettings UserAiProviderSetting[] @relation("UserAiProviderSettings")
+  temporaryAnalysisDatasets TemporaryAnalysisDataset[] @relation("TemporaryAnalysisOwner")
+  persistentDatasets PersistentDataset[] @relation("PersistentDatasetOwner")
+
+  @@schema("public")
 }
 
 model Note {
@@ -78,6 +124,7 @@ model Note {
   updatedAt DateTime @updatedAt
 
   @@index([userId, updatedAt])
+  @@schema("public")
 }
 
 model DataSource {
@@ -91,6 +138,8 @@ model DataSource {
   accessList       DataSourceAccess[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+
+  @@schema("public")
 }
 
 model DataSourceAccess {
@@ -102,6 +151,7 @@ model DataSourceAccess {
 
   @@id([dataSourceId, userId])
   @@index([userId])
+  @@schema("public")
 }
 
 model AuditLog {
@@ -116,6 +166,7 @@ model AuditLog {
 
   @@index([actorId, createdAt])
   @@index([entityType, createdAt])
+  @@schema("public")
 }
 
 model AppSetting {
@@ -127,6 +178,44 @@ model AppSetting {
   updatedBy   User?           @relation("AppSettingActor", fields: [updatedById], references: [id], onDelete: SetNull)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
+  @@schema("public")
+}
+
+model UserAiProviderSetting {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("UserAiProviderSettings", fields: [userId], references: [id], onDelete: Cascade)
+  provider        String
+  endpoint        String   @default("")
+  model           String   @default("")
+  apiKeyCiphertext String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@schema("public")
+}
+
+model PluginDefinition {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?
+  sourceCode      String
+  protocolVersion String
+  generationPrompt String?
+  provider        String?
+  providerModel   String?
+  scope           PluginScope   @default(PERSONAL)
+  runtime         PluginRuntime @default(BOTH)
+  ownerId         String?
+  owner           User?         @relation("PluginOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([scope, ownerId, updatedAt])
+  @@schema("public")
 }
 
 model LoginOtpChallenge {
@@ -142,4 +231,75 @@ model LoginOtpChallenge {
 
   @@index([userId, createdAt])
   @@index([expiresAt])
+  @@schema("public")
+}
+
+model TemporaryAnalysisDataset {
+  id               String                   @id @default(cuid())
+  label            String
+  tableName        String                   @unique
+  sourceFileName   String
+  sourceFileFormat TemporaryDatasetFormat
+  sourceSheetName  String?
+  rowCount         Int
+  columnCount      Int
+  columns          Json
+  metadata         Json?
+  uploadedById     String
+  uploadedBy       User                     @relation("TemporaryAnalysisOwner", fields: [uploadedById], references: [id], onDelete: Cascade)
+  expiresAt        DateTime
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  rows             TemporaryAnalysisDatasetRow[]
+
+  @@index([uploadedById, expiresAt])
+  @@schema("adhoc_analysis")
+}
+
+model TemporaryAnalysisDatasetRow {
+  id        String                   @id @default(cuid())
+  datasetId String
+  dataset   TemporaryAnalysisDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  rowIndex  Int
+  payload   Json
+  createdAt DateTime                 @default(now())
+
+  @@unique([datasetId, rowIndex])
+  @@index([datasetId])
+  @@schema("adhoc_analysis")
+}
+
+model PersistentDataset {
+  id             String                  @id @default(cuid())
+  label          String
+  tableName      String                  @unique
+  origin         PersistentDatasetOrigin
+  sourceLabel    String?
+  sourceUri      String?
+  rowCount       Int
+  columnCount    Int
+  columns        Json
+  metadata       Json?
+  createdById    String?
+  createdBy      User?                   @relation("PersistentDatasetOwner", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  rows           PersistentDatasetRow[]
+
+  @@index([origin, createdAt])
+  @@index([createdById, createdAt])
+  @@schema("import_archive")
+}
+
+model PersistentDatasetRow {
+  id        String            @id @default(cuid())
+  datasetId String
+  dataset   PersistentDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  rowIndex  Int
+  payload   Json
+  createdAt DateTime          @default(now())
+
+  @@unique([datasetId, rowIndex])
+  @@index([datasetId])
+  @@schema("import_archive")
 }

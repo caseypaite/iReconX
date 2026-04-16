@@ -6,6 +6,7 @@ import { Pin, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
 import { cn } from "@/lib/utils";
 
 function AccessoryPanel({
@@ -22,8 +23,11 @@ function AccessoryPanel({
       <div className="border-b border-white/10 px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-white">{title}</p>
-            <p className="text-xs text-slate-400">{description}</p>
+            <HoverHelperLabel
+              helper={description}
+              label={title}
+              labelClassName="text-sm font-semibold text-white"
+            />
           </div>
         </div>
       </div>
@@ -268,6 +272,14 @@ export function NotepadAccessory() {
 
 type CalculatorOperator = "+" | "-" | "*" | "/";
 
+function isEditableEventTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
 function applyCalculation(left: number, right: number, operator: CalculatorOperator) {
   if (operator === "+") {
     return left + right;
@@ -293,13 +305,13 @@ function formatCalculatorValue(value: number) {
   return `${normalized}`;
 }
 
-export function CalculatorAccessory() {
+export function CalculatorAccessory({ isFocused = false }: { isFocused?: boolean }) {
   const [display, setDisplay] = useState("0");
   const [storedValue, setStoredValue] = useState<number | null>(null);
   const [operator, setOperator] = useState<CalculatorOperator | null>(null);
   const [overwrite, setOverwrite] = useState(true);
 
-  function inputDigit(digit: string) {
+  const inputDigit = useCallback((digit: string) => {
     setDisplay((current) => {
       if (overwrite || current === "Error") {
         setOverwrite(false);
@@ -308,9 +320,9 @@ export function CalculatorAccessory() {
 
       return current === "0" ? digit : `${current}${digit}`;
     });
-  }
+  }, [overwrite]);
 
-  function inputDecimal() {
+  const inputDecimal = useCallback(() => {
     setDisplay((current) => {
       if (overwrite || current === "Error") {
         setOverwrite(false);
@@ -319,16 +331,16 @@ export function CalculatorAccessory() {
 
       return current.includes(".") ? current : `${current}.`;
     });
-  }
+  }, [overwrite]);
 
-  function clearAll() {
+  const clearAll = useCallback(() => {
     setDisplay("0");
     setStoredValue(null);
     setOperator(null);
     setOverwrite(true);
-  }
+  }, []);
 
-  function commitOperator(nextOperator: CalculatorOperator) {
+  const commitOperator = useCallback((nextOperator: CalculatorOperator) => {
     const currentValue = Number.parseFloat(display);
 
     if (!Number.isFinite(currentValue)) {
@@ -346,9 +358,9 @@ export function CalculatorAccessory() {
 
     setOperator(nextOperator);
     setOverwrite(true);
-  }
+  }, [clearAll, display, operator, storedValue]);
 
-  function resolveCalculation() {
+  const resolveCalculation = useCallback(() => {
     if (operator === null || storedValue === null) {
       return;
     }
@@ -360,7 +372,7 @@ export function CalculatorAccessory() {
     setStoredValue(null);
     setOperator(null);
     setOverwrite(true);
-  }
+  }, [display, operator, storedValue]);
 
   function toggleSign() {
     if (display === "0" || display === "Error") {
@@ -378,6 +390,69 @@ export function CalculatorAccessory() {
     setDisplay((current) => `${Number.parseFloat(current) / 100}`);
     setOverwrite(true);
   }
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (isEditableEventTarget(event.target)) {
+        return;
+      }
+
+      if (event.code.startsWith("Numpad") && event.code.length === "Numpad0".length) {
+        inputDigit(event.code.slice(-1));
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "NumpadDecimal") {
+        inputDecimal();
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "NumpadAdd") {
+        commitOperator("+");
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "NumpadSubtract") {
+        commitOperator("-");
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "NumpadMultiply") {
+        commitOperator("*");
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "NumpadDivide") {
+        commitOperator("/");
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "NumpadEnter") {
+        resolveCalculation();
+        event.preventDefault();
+        return;
+      }
+
+      if (event.code === "Escape") {
+        clearAll();
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [clearAll, commitOperator, inputDecimal, inputDigit, isFocused, resolveCalculation]);
 
   const buttons = [
     ["C", "+/-", "%", "/"],

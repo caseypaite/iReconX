@@ -11,7 +11,9 @@ import {
   type AdminSettingValueMap
 } from "@/lib/admin/settings-config";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { DataSourceManager } from "@/components/admin/data-source-manager";
 import { UserManager, type ManagedUser } from "@/components/admin/user-manager";
 import { Input } from "@/components/ui/input";
@@ -125,8 +127,10 @@ export function AdminSettingsConsole({
   return (
     <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
       <Card className="h-fit">
-        <CardTitle>Configuration panels</CardTitle>
-        <CardDescription>Switch between security, identity, and data source settings from one admin console.</CardDescription>
+        <HoverSubtitleTitle
+          subtitle="Switch between security, identity, and data source settings from one admin console."
+          title="Configuration panels"
+        />
         <div className="mt-5 space-y-2">
           {sections.map((category) => {
             const Icon = category.key === "USER_MANAGEMENT" ? Users : categoryIcons[category.key];
@@ -154,10 +158,14 @@ export function AdminSettingsConsole({
                 </span>
                 <span className="flex-1">
                   <span className="flex items-center justify-between gap-3">
-                    <span className="font-medium">{category.label}</span>
+                    <HoverHelperLabel
+                      helper={category.description}
+                      label={category.label}
+                      labelClassName="font-medium"
+                      wrapperClassName="max-w-full"
+                    />
                     {dirtyCount > 0 ? <span className="text-xs text-amber-300">{dirtyCount} unsaved</span> : null}
                   </span>
-                  <span className="mt-1 block text-xs text-slate-400">{category.description}</span>
                 </span>
               </button>
             );
@@ -168,8 +176,7 @@ export function AdminSettingsConsole({
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>{activeSection.label}</CardTitle>
-            <CardDescription>{activeSection.description}</CardDescription>
+            <HoverSubtitleTitle subtitle={activeSection.description} title={activeSection.label} />
           </div>
         </div>
 

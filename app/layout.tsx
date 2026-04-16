@@ -3,15 +3,17 @@ import { Inter } from "next/font/google";
 
 import { Providers } from "@/app/providers";
 import "@/app/globals.css";
+import { loadSiteName } from "@/lib/site-name";
 import { getSiteUrl } from "@/lib/site-url";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl();
+  const siteName = await loadSiteName();
 
   return {
-    title: "iReconX Analytics Studio",
+    title: siteName,
     description: "Secure data analytics and exploration studio with RBAC.",
     metadataBase: siteUrl ?? undefined,
     alternates: siteUrl
@@ -21,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
       : undefined,
     openGraph: siteUrl
       ? {
-          siteName: "iReconX Analytics Studio",
+          siteName,
           url: siteUrl
         }
       : undefined

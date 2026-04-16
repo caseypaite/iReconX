@@ -6,11 +6,19 @@ export type StudioCellValue = string | number | boolean | null;
 export type StudioRow = Record<string, StudioCellValue>;
 
 export type StudioColumnKind = "string" | "number" | "boolean" | "date" | "mixed" | "empty";
+export type StudioImportColumnType = "string" | "number" | "boolean" | "date";
 
 export type StudioColumn = {
   key: string;
   label: string;
   kind: StudioColumnKind;
+};
+
+export type StudioImportColumnSpec = {
+  key: string;
+  label: string;
+  inferredType: StudioImportColumnType;
+  targetType: StudioImportColumnType;
 };
 
 export type StudioDatasetSourceKind = "upload" | "data-source-catalog";
@@ -57,6 +65,8 @@ export type StudioPivotConfig = {
   aggregation: StudioAggregation;
   valueField?: string;
 };
+
+const IMPORT_TABLE_NAME_MAX_LENGTH = 48;
 
 function normalizeCellValue(value: unknown): StudioCellValue {
   if (value === undefined || value === null || value === "") {
@@ -125,6 +135,136 @@ function inferColumnKind(values: StudioCellValue[]): StudioColumnKind {
   return "mixed";
 }
 
+function normalizeImportColumnType(kind: StudioColumnKind): StudioImportColumnType {
+  if (kind === "number" || kind === "boolean" || kind === "date") {
+    return kind;
+  }
+
+  return "string";
+}
+
+export function sanitizeImportedTableName(rawValue: string, fallbackValue = "imported_data") {
+  const sanitized = rawValue
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const fallback = fallbackValue
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "") || "imported_data";
+  const normalized = sanitized || fallback;
+  const prefixed = /^[a-z_]/.test(normalized) ? normalized : `t_${normalized}`;
+
+  return prefixed.slice(0, IMPORT_TABLE_NAME_MAX_LENGTH).replace(/_+$/g, "") || "imported_data";
+}
+
+function convertBooleanLikeValue(value: unknown) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (["true", "yes", "y", "1"].includes(normalized)) {
+      return true;
+    }
+
+    if (["false", "no", "n", "0"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  if (typeof value === "number") {
+    if (value === 1) {
+      return true;
+    }
+
+    if (value === 0) {
+      return false;
+    }
+  }
+
+  return null;
+}
+
+function convertValueToType(value: unknown, targetType: StudioImportColumnType) {
+  if (value === undefined || value === null || value === "") {
+    return {
+      value: null as StudioCellValue,
+      failed: false
+    };
+  }
+
+  if (targetType === "string") {
+    return {
+      value: normalizeCellValue(value),
+      failed: false
+    };
+  }
+
+  if (targetType === "number") {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return {
+        value,
+        failed: false
+      };
+    }
+
+    if (typeof value === "string") {
+      const parsed = Number(value.trim());
+
+      if (Number.isFinite(parsed)) {
+        return {
+          value: parsed,
+          failed: false
+        };
+      }
+    }
+
+    return {
+      value: null as StudioCellValue,
+      failed: true
+    };
+  }
+
+  if (targetType === "boolean") {
+    const converted = convertBooleanLikeValue(value);
+
+    return {
+      value: converted,
+      failed: converted === null
+    };
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      value: value.toISOString(),
+      failed: false
+    };
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return {
+        value: parsed.toISOString(),
+        failed: false
+      };
+    }
+  }
+
+  return {
+    value: null as StudioCellValue,
+    failed: true
+  };
+}
+
 function buildColumns(rows: StudioRow[]) {
   const keys = Array.from(
     rows.reduce((set, row) => {
@@ -167,6 +307,95 @@ export function createDatasetFromRecords(
     columns: buildColumns(rows),
     rows,
     metadata
+  };
+}
+
+export function buildImportColumnSpecsFromMatrix(matrix: unknown[][]): StudioImportColumnSpec[] {
+  if (matrix.length === 0) {
+    return [];
+  }
+
+  const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
+  const seenHeaders = new Set<string>();
+  const headers = Array.from({ length: width }, (_, index) =>
+    normalizeHeader(matrix[0]?.[index], index, seenHeaders)
+  );
+
+  return headers.map((header, index) => {
+    const values = matrix
+      .slice(1)
+      .map((row) => normalizeCellValue(row[index]))
+      .filter((value) => value !== null);
+    const inferredType = normalizeImportColumnType(inferColumnKind(values));
+
+    return {
+      key: header,
+      label: header,
+      inferredType,
+      targetType: inferredType
+    };
+  });
+}
+
+export function createTypedDatasetFromMatrix(
+  matrix: unknown[][],
+  label: string,
+  sourceKind: StudioDatasetSourceKind,
+  columnSpecs: StudioImportColumnSpec[],
+  metadata?: Record<string, StudioCellValue>
+): {
+  dataset: StudioDataset;
+  conversionIssues: string[];
+} {
+  if (matrix.length === 0) {
+    return {
+      dataset: {
+        label,
+        sourceKind,
+        rowCount: 0,
+        columns: [],
+        rows: [],
+        metadata
+      },
+      conversionIssues: []
+    };
+  }
+
+  const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
+  const seenHeaders = new Set<string>();
+  const headers = Array.from({ length: width }, (_, index) =>
+    normalizeHeader(matrix[0]?.[index], index, seenHeaders)
+  );
+  const specsByKey = new Map(columnSpecs.map((spec) => [spec.key, spec]));
+  const conversionFailureCounts = new Map<string, number>();
+
+  const records = matrix
+    .slice(1)
+    .filter((row) => row.some((cell) => cell !== null && cell !== undefined && String(cell).trim() !== ""))
+    .map((row) =>
+      headers.reduce<Record<string, StudioCellValue>>((record, header, index) => {
+        const spec = specsByKey.get(header) ?? {
+          key: header,
+          label: header,
+          inferredType: "string" as StudioImportColumnType,
+          targetType: "string" as StudioImportColumnType
+        };
+        const converted = convertValueToType(row[index], spec.targetType);
+
+        if (converted.failed) {
+          conversionFailureCounts.set(spec.label, (conversionFailureCounts.get(spec.label) ?? 0) + 1);
+        }
+
+        record[spec.label] = converted.value;
+        return record;
+      }, {})
+    );
+
+  return {
+    dataset: createDatasetFromRecords(records, label, sourceKind, metadata),
+    conversionIssues: Array.from(conversionFailureCounts.entries()).map(
+      ([columnLabel, count]) => `${columnLabel}: ${count} value${count === 1 ? "" : "s"} could not be converted and were set to null.`
+    )
   };
 }
 

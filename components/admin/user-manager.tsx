@@ -5,6 +5,7 @@ import { Eye, EyeOff, PlusCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -179,8 +180,12 @@ export function UserManager({ initialUsers }: { initialUsers: ManagedUser[] }) {
               onClick={() => selectUser(user)}
               type="button"
             >
-              <p className="font-medium">{user.name || user.email}</p>
-              <p className="mt-1 text-xs text-slate-400">{user.email}</p>
+              <HoverHelperLabel
+                helper={user.email}
+                label={user.name || user.email}
+                labelClassName="font-medium"
+                wrapperClassName="max-w-full"
+              />
               <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
                 <span>{user.role}</span>
                 <span>{user.isActive ? "Active" : "Inactive"}</span>

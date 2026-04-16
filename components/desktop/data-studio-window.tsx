@@ -1,14 +1,13 @@
 "use client";
 
-import { DatabaseZap, FileUp, Filter, Layers3, PanelLeftClose, PanelLeftOpen, RefreshCw, Sigma, Table2 } from "lucide-react";
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { DatabaseZap, Filter, Layers3, PanelLeftClose, PanelLeftOpen, RefreshCw, Sigma, Table2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   applyStudioFilters,
   buildSourceCatalogDataset,
   buildStudioPivot,
   buildStudioSummary,
-  DATA_STUDIO_FILE_LIMIT_BYTES,
   type AccessibleStudioSource,
   type StudioAggregation,
   type StudioDataset,
@@ -16,8 +15,11 @@ import {
 } from "@/lib/data-studio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
+import { useStudioWorkspaceStore } from "@/lib/stores/studio-workspace";
 
 type SummaryConfig = {
   groupBy: string;
@@ -32,7 +34,12 @@ type PivotConfig = {
   valueField: string;
 };
 
-type StudioWorkspacePanel = "preview" | "summary" | "pivot";
+type StudioWorkspacePanel = "summary" | "pivot";
+type TableRow = Array<Record<string, string | number | boolean | null>>;
+type PivotResult = {
+  columns: string[];
+  rows: TableRow;
+};
 
 const selectClassName =
   "w-full rounded-none border border-white/10 bg-slate-950/50 px-2 py-1 text-[11px] text-slate-100 outline-none focus:border-sky-400";
@@ -98,7 +105,10 @@ function DataTable({
   );
 }
 
-export function DataStudioWindow() {
+export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: () => void }) {
+  const setWorkspaceDataset = useStudioWorkspaceStore((state) => state.setDataset);
+  const sharedDataset = useStudioWorkspaceStore((state) => state.dataset);
+  const lastUpdatedBy = useStudioWorkspaceStore((state) => state.lastUpdatedBy);
   const [sources, setSources] = useState<AccessibleStudioSource[]>([]);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [dataset, setDataset] = useState<StudioDataset | null>(null);
@@ -114,12 +124,16 @@ export function DataStudioWindow() {
     aggregation: "count",
     valueField: ""
   });
-  const [activePanel, setActivePanel] = useState<StudioWorkspacePanel>("preview");
+  const [activePanel, setActivePanel] = useState<StudioWorkspacePanel>("summary");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadingSources, setLoadingSources] = useState(true);
   const [refreshingSources, setRefreshingSources] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [summaryRows, setSummaryRows] = useState<TableRow>([]);
+  const [summaryDirty, setSummaryDirty] = useState(false);
+  const [pivotResult, setPivotResult] = useState<PivotResult>({ columns: [], rows: [] });
+  const [pivotDirty, setPivotDirty] = useState(false);
 
   const resetTransforms = useCallback((nextDataset: StudioDataset) => {
     const firstColumn = nextDataset.columns[0]?.key ?? "";
@@ -138,7 +152,11 @@ export function DataStudioWindow() {
       aggregation: "count",
       valueField: firstNumericColumn
     });
-    setActivePanel("preview");
+    setActivePanel("summary");
+    setSummaryRows([]);
+    setPivotResult({ columns: [], rows: [] });
+    setSummaryDirty(nextDataset.rows.length > 0);
+    setPivotDirty(nextDataset.rows.length > 0);
   }, []);
 
   const loadSources = useCallback(async (initialLoad = false) => {
@@ -174,6 +192,22 @@ export function DataStudioWindow() {
     void loadSources(true);
   }, [loadSources]);
 
+  useEffect(() => {
+    if ((lastUpdatedBy === "transform-studio" || lastUpdatedBy === "import-wizard") && sharedDataset) {
+      setDataset(sharedDataset);
+      resetTransforms(sharedDataset);
+      setError(null);
+      setActivePanel("summary");
+      setImportMessage(
+        lastUpdatedBy === "import-wizard"
+          ? sharedDataset.metadata?.importedPermanently
+            ? "Latest upload loaded into the studio and copied into the persistent import store."
+            : "Latest upload loaded into the temporary analysis workspace."
+          : null
+      );
+    }
+  }, [lastUpdatedBy, resetTransforms, sharedDataset]);
+
   const columns = dataset?.columns ?? [];
   const numericColumns = columns.filter((column) => column.kind === "number");
 
@@ -182,30 +216,27 @@ export function DataStudioWindow() {
     [dataset, filters]
   );
 
-  const summaryRows = useMemo(
-    () =>
-      activePanel === "summary" && dataset
-        ? buildStudioSummary(filteredRows, {
-            groupBy: summaryConfig.groupBy || undefined,
-            aggregation: summaryConfig.aggregation,
-            metricColumn: summaryConfig.metricColumn || undefined
-          })
-        : [],
-    [activePanel, dataset, filteredRows, summaryConfig]
-  );
+  useEffect(() => {
+    if (!dataset) {
+      setSummaryRows([]);
+      setSummaryDirty(false);
+      return;
+    }
 
-  const pivotResult = useMemo(
-    () =>
-      activePanel === "pivot" && dataset
-        ? buildStudioPivot(filteredRows, {
-            rowField: pivotConfig.rowField || undefined,
-            columnField: pivotConfig.columnField || undefined,
-            aggregation: pivotConfig.aggregation,
-            valueField: pivotConfig.valueField || undefined
-          })
-        : { columns: [], rows: [] },
-    [activePanel, dataset, filteredRows, pivotConfig]
-  );
+    setSummaryRows([]);
+    setSummaryDirty(true);
+  }, [dataset, filters, summaryConfig]);
+
+  useEffect(() => {
+    if (!dataset) {
+      setPivotResult({ columns: [], rows: [] });
+      setPivotDirty(false);
+      return;
+    }
+
+    setPivotResult({ columns: [], rows: [] });
+    setPivotDirty(true);
+  }, [dataset, filters, pivotConfig]);
 
   function loadSelectedSourcesDataset() {
     const scopedSources =
@@ -220,51 +251,46 @@ export function DataStudioWindow() {
 
     const nextDataset = buildSourceCatalogDataset(scopedSources, scopedSources.length === 1 ? scopedSources[0].name : "Selected governed data sources");
     setDataset(nextDataset);
+    setWorkspaceDataset(nextDataset, "data-studio");
     resetTransforms(nextDataset);
+    setImportMessage(null);
     setError(null);
     setSidebarOpen(false);
   }
 
-  async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
+  function runSummary() {
+    if (!dataset) {
+      setError("Load a dataset to generate grouped summaries.");
       return;
     }
 
-    if (file.size > DATA_STUDIO_FILE_LIMIT_BYTES) {
-      setError("Files larger than 20 MB are not allowed.");
-      event.target.value = "";
-      return;
-    }
-
-    setUploading(true);
+    setSummaryRows(
+      buildStudioSummary(filteredRows, {
+        groupBy: summaryConfig.groupBy || undefined,
+        aggregation: summaryConfig.aggregation,
+        metricColumn: summaryConfig.metricColumn || undefined
+      })
+    );
+    setSummaryDirty(false);
     setError(null);
+  }
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/explorer/data-studio/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include"
-      });
-      const body = (await response.json().catch(() => null)) as { error?: string; dataset?: StudioDataset } | null;
-
-      if (!response.ok || !body?.dataset) {
-        throw new Error(body?.error ?? "Unable to load the uploaded file.");
-      }
-
-      setDataset(body.dataset);
-      resetTransforms(body.dataset);
-      setSidebarOpen(false);
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to load the uploaded file.");
-    } finally {
-      setUploading(false);
-      event.target.value = "";
+  function runPivot() {
+    if (!dataset) {
+      setError("Load a dataset to generate a pivot table.");
+      return;
     }
+
+    setPivotResult(
+      buildStudioPivot(filteredRows, {
+        rowField: pivotConfig.rowField || undefined,
+        columnField: pivotConfig.columnField || undefined,
+        aggregation: pivotConfig.aggregation,
+        valueField: pivotConfig.valueField || undefined
+      })
+    );
+    setPivotDirty(false);
+    setError(null);
   }
 
   return (
@@ -282,8 +308,10 @@ export function DataStudioWindow() {
             <Card className={compactCardClassName}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <CardTitle>Data Studio</CardTitle>
-                <CardDescription>Choose governed sources or upload a spreadsheet to manipulate tabular data.</CardDescription>
+                <HoverSubtitleTitle
+                  subtitle="Choose governed sources or upload a spreadsheet to manipulate tabular data."
+                  title="Data Studio"
+                />
               </div>
               <Badge className={compactBadgeClassName}>{dataset?.sourceKind === "upload" ? "Upload" : "Studio"}</Badge>
             </div>
@@ -297,8 +325,10 @@ export function DataStudioWindow() {
             <Card className={compactCardClassName}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <CardTitle>Governed sources</CardTitle>
-                <CardDescription>Load accessible data sources as a metadata dataset inside the studio.</CardDescription>
+                <HoverSubtitleTitle
+                  subtitle="Load accessible data sources as a metadata dataset inside the studio."
+                  title="Governed sources"
+                />
               </div>
               <Button className={compactButtonClassName} onClick={() => void loadSources()} type="button" variant="ghost">
                 <RefreshCw className={`mr-2 h-4 w-4 ${refreshingSources ? "animate-spin" : ""}`} />
@@ -337,10 +367,19 @@ export function DataStudioWindow() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <DatabaseZap className="h-3.5 w-3.5 text-sky-300" />
-                            <p className="truncate text-xs font-medium text-white">{source.name}</p>
+                            <HoverHelperLabel
+                              helper={
+                                <>
+                                  <div>{`${source.type} · ${source.owner}`}</div>
+                                  <div>{source.description || "No description provided."}</div>
+                                </>
+                              }
+                              label={source.name}
+                              labelClassName="truncate text-xs font-medium text-white"
+                              tooltipClassName="text-[10px]"
+                              wrapperClassName="max-w-full"
+                            />
                           </div>
-                          <p className="mt-0.5 text-[10px] text-slate-400">{source.type} · {source.owner}</p>
-                          <p className="mt-0.5 text-[10px] text-slate-500">{source.description || "No description provided."}</p>
                         </div>
                       </label>
                     );
@@ -355,22 +394,30 @@ export function DataStudioWindow() {
             </Card>
 
             <Card className={compactCardClassName}>
-            <div>
-              <CardTitle>Upload file</CardTitle>
-              <CardDescription>Import CSV, XLS, or XLSX files up to 20 MB.</CardDescription>
-            </div>
-            <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-none border border-dashed border-sky-400/35 bg-sky-400/8 px-3 py-3 text-xs text-sky-100">
-              <FileUp className="h-3.5 w-3.5" />
-              <span>{uploading ? "Uploading…" : "Choose CSV or Excel file"}</span>
-              <Input accept=".csv,.xls,.xlsx" className="hidden" onChange={handleUpload} type="file" />
-            </label>
+              <div>
+                <HoverSubtitleTitle
+                  subtitle="Launch the guided floating window for CSV and Excel imports with type conversion."
+                  title="Data import wizard"
+                />
+              </div>
+              <div className="mt-2 space-y-2">
+                <p className="text-[11px] text-slate-400">
+                  Open the dedicated import window to choose a file, set column types, and optionally save a persistent copy.
+                </p>
+                <Button className={`w-full ${compactButtonClassName}`} onClick={onOpenImportWizard} type="button">
+                  Open import window
+                </Button>
+                {importMessage ? <p className="text-[11px] text-emerald-300">{importMessage}</p> : null}
+              </div>
             </Card>
 
             <Card className={compactCardClassName}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <CardTitle>Filters</CardTitle>
-                <CardDescription>Apply column filters before pivoting or summarizing.</CardDescription>
+                <HoverSubtitleTitle
+                  subtitle="Apply column filters before pivoting or summarizing."
+                  title="Filters"
+                />
               </div>
               <Button
                 className={compactButtonClassName}
@@ -466,15 +513,6 @@ export function DataStudioWindow() {
             <div className="ml-auto flex flex-wrap gap-1">
               <Button
                 className={compactButtonClassName}
-                onClick={() => setActivePanel("preview")}
-                type="button"
-                variant={activePanel === "preview" ? "default" : "outline"}
-              >
-                <Table2 className="mr-1 h-3.5 w-3.5" />
-                Preview
-              </Button>
-              <Button
-                className={compactButtonClassName}
                 onClick={() => setActivePanel("summary")}
                 type="button"
                 variant={activePanel === "summary" ? "default" : "outline"}
@@ -488,9 +526,9 @@ export function DataStudioWindow() {
                 type="button"
                 variant={activePanel === "pivot" ? "default" : "outline"}
               >
-                <Layers3 className="mr-1 h-3.5 w-3.5" />
-                Pivot
-              </Button>
+                 <Layers3 className="mr-1 h-3.5 w-3.5" />
+                 Pivot
+               </Button>
             </div>
           </div>
 
@@ -518,7 +556,7 @@ export function DataStudioWindow() {
                 <Sigma className="h-4 w-4 text-amber-300" />
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Summary groups</p>
-                  <p className="text-xs font-medium text-white">{activePanel === "summary" ? summaryRows.length : "Standby"}</p>
+                  <p className="text-xs font-medium text-white">{summaryDirty ? "Pending run" : summaryRows.length}</p>
                 </div>
               </div>
             </Card>
@@ -527,7 +565,7 @@ export function DataStudioWindow() {
                 <Layers3 className="h-4 w-4 text-violet-300" />
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Pivot columns</p>
-                  <p className="text-xs font-medium text-white">{activePanel === "pivot" ? pivotResult.columns.length : "Standby"}</p>
+                  <p className="text-xs font-medium text-white">{pivotDirty ? "Pending run" : pivotResult.columns.length}</p>
                 </div>
               </div>
             </Card>
@@ -539,36 +577,19 @@ export function DataStudioWindow() {
             </div>
           ) : null}
 
-          {activePanel === "preview" ? (
-            <Card className={`${compactCardClassName} min-h-0`}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <CardTitle>Filtered data preview</CardTitle>
-                  <CardDescription>The preview updates immediately as filters change.</CardDescription>
-                </div>
-                <div className="text-right text-[10px] text-slate-400">
-                  <p>{dataset?.rowCount ?? 0} total rows</p>
-                  <p>Showing up to 50 rows</p>
-                </div>
-              </div>
-              <div className="mt-2">
-                <DataTable
-                  columns={columns.map((column) => column.key)}
-                  emptyMessage="Load a governed source catalog or upload a file to start analyzing data."
-                  rows={filteredRows.slice(0, 50)}
-                />
-              </div>
-            </Card>
-          ) : null}
-
           {activePanel === "summary" ? (
             <Card className={`${compactCardClassName} min-h-0`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle>Summarization</CardTitle>
-                  <CardDescription>Group rows and calculate counts or numeric aggregates.</CardDescription>
+                  <HoverSubtitleTitle
+                    subtitle="Configure the aggregation, then click Run summary to execute it."
+                    title="Summarization"
+                  />
                 </div>
-                <Sigma className="h-4 w-4 text-amber-300" />
+                <Button className={compactButtonClassName} onClick={runSummary} type="button">
+                  <Sigma className="mr-1 h-3.5 w-3.5" />
+                  Run summary
+                </Button>
               </div>
               <div className="mt-2 grid gap-2 md:grid-cols-3">
                 <select
@@ -616,7 +637,13 @@ export function DataStudioWindow() {
               <div className="mt-2">
                 <DataTable
                   columns={summaryRows.length > 0 ? Object.keys(summaryRows[0]) : []}
-                  emptyMessage="Load a dataset to generate grouped summaries."
+                  emptyMessage={
+                    !dataset
+                      ? "Load a dataset to generate grouped summaries."
+                      : summaryDirty
+                        ? "Click Run summary to execute the current summary configuration."
+                        : "The current summary returned no rows."
+                  }
                   rows={summaryRows}
                 />
               </div>
@@ -627,10 +654,15 @@ export function DataStudioWindow() {
             <Card className={`${compactCardClassName} min-h-0`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle>Pivot table</CardTitle>
-                  <CardDescription>Cross-tab filtered rows by row and column dimensions.</CardDescription>
+                  <HoverSubtitleTitle
+                    subtitle="Choose the row and column fields, then click Run pivot to build the cross-tab."
+                    title="Pivot table"
+                  />
                 </div>
-                <Layers3 className="h-4 w-4 text-violet-300" />
+                <Button className={compactButtonClassName} onClick={runPivot} type="button">
+                  <Layers3 className="mr-1 h-3.5 w-3.5" />
+                  Run pivot
+                </Button>
               </div>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 <select
@@ -690,7 +722,13 @@ export function DataStudioWindow() {
               <div className="mt-2">
                 <DataTable
                   columns={pivotResult.columns}
-                  emptyMessage="Choose row and column fields to build a pivot table."
+                  emptyMessage={
+                    !dataset
+                      ? "Choose row and column fields to build a pivot table."
+                      : pivotDirty
+                        ? "Click Run pivot to execute the current pivot configuration."
+                        : "The current pivot returned no rows."
+                  }
                   rows={pivotResult.rows}
                 />
               </div>

@@ -1,4 +1,5 @@
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 
 const columns = [
   { name: "event_name", type: "text", nulls: "0%", distribution: "page_view, click, checkout_started" },
@@ -9,10 +10,10 @@ const columns = [
 export function MetadataCard() {
   return (
     <Card className="h-full">
-      <CardTitle>Metadata Inspector</CardTitle>
-      <CardDescription>
-        Column types, null ratios, and lightweight profiling stay adjacent to the result grid for guided exploration.
-      </CardDescription>
+      <HoverSubtitleTitle
+        subtitle="Column types, null ratios, and lightweight profiling stay adjacent to the result grid for guided exploration."
+        title="Metadata Inspector"
+      />
       <div className="mt-5 space-y-3">
         {columns.map((column) => (
           <div key={column.name} className="rounded-[18px] border border-slate-800 bg-slate-900/70 p-4">

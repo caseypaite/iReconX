@@ -1,12 +1,13 @@
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 
 export function DataGridCard() {
   return (
     <Card className="h-full">
-      <CardTitle>Dynamic Data Grid</CardTitle>
-      <CardDescription>
-        AG-Grid or a similar virtualized grid plugs in here for 10k+ row exploration without changing the surrounding dashboard contract.
-      </CardDescription>
+      <HoverSubtitleTitle
+        subtitle="AG-Grid or a similar virtualized grid plugs in here for 10k+ row exploration without changing the surrounding dashboard contract."
+        title="Dynamic Data Grid"
+      />
       <div className="mt-5 rounded-[18px] border border-dashed border-slate-700 bg-slate-900/70 p-6">
         <div className="grid grid-cols-[1.4fr_repeat(3,minmax(0,1fr))] gap-3 text-xs uppercase tracking-[0.2em] text-slate-400">
           <span>event_name</span>

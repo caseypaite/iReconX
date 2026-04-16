@@ -1,6 +1,8 @@
 "use client";
 
-import { Card, CardDescription, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
+import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 
 export type UiPrefs = {
   gradient: "aurora" | "sunset" | "ocean" | "forest" | "midnight" | "none";
@@ -66,8 +68,10 @@ export function DesktopOptionsWindow({ prefs, onChange }: DesktopOptionsWindowPr
   return (
     <div className="space-y-4">
       <Card>
-        <CardTitle>Background Gradient</CardTitle>
-        <CardDescription>Choose the ambient glow style for the desktop background.</CardDescription>
+        <HoverSubtitleTitle
+          subtitle="Choose the ambient glow style for the desktop background."
+          title="Background Gradient"
+        />
         <div className="mt-4 flex flex-wrap gap-3">
           {gradientKeys.map((key) => (
             <button
@@ -91,13 +95,15 @@ export function DesktopOptionsWindow({ prefs, onChange }: DesktopOptionsWindowPr
       </Card>
 
       <Card>
-        <CardTitle>Accessibility</CardTitle>
-        <CardDescription>Adjust visual effects to suit your preferences.</CardDescription>
+        <HoverSubtitleTitle subtitle="Adjust visual effects to suit your preferences." title="Accessibility" />
         <div className="mt-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-white">Reduce transparency</p>
-              <p className="text-xs text-slate-400">Uses solid backgrounds instead of glass blur effects.</p>
+              <HoverHelperLabel
+                helper="Uses solid backgrounds instead of glass blur effects."
+                label="Reduce transparency"
+                labelClassName="text-sm font-medium text-white"
+              />
             </div>
             <Toggle
               on={prefs.reduceTransparency}
@@ -108,20 +114,25 @@ export function DesktopOptionsWindow({ prefs, onChange }: DesktopOptionsWindowPr
       </Card>
 
       <Card>
-        <CardTitle>Dock</CardTitle>
-        <CardDescription>Customize the application dock behaviour.</CardDescription>
+        <HoverSubtitleTitle subtitle="Customize the application dock behaviour." title="Dock" />
         <div className="mt-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-white">Show dock</p>
-              <p className="text-xs text-slate-400">Display the app launcher dock at the bottom of the screen.</p>
+              <HoverHelperLabel
+                helper="Display the app launcher dock at the bottom of the screen."
+                label="Show dock"
+                labelClassName="text-sm font-medium text-white"
+              />
             </div>
             <Toggle on={prefs.showDock} onToggle={() => onChange({ ...prefs, showDock: !prefs.showDock })} />
           </div>
           <div className="mt-4 flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-white">Show dock labels</p>
-              <p className="text-xs text-slate-400">Display app name labels under dock icons.</p>
+              <HoverHelperLabel
+                helper="Display app name labels under dock icons."
+                label="Show dock labels"
+                labelClassName="text-sm font-medium text-white"
+              />
             </div>
             <Toggle
               on={prefs.dockLabels}

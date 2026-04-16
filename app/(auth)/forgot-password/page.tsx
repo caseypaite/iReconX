@@ -1,12 +1,15 @@
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
+import { loadSiteName } from "@/lib/site-name";
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const siteName = await loadSiteName();
+
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-5xl rounded-[18px] border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8 shadow-2xl">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-300">iReconX</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-300">{siteName}</p>
             <h1 className="text-4xl font-semibold text-white">Recover your access</h1>
             <p className="max-w-2xl text-base text-slate-400">
               Reset your password using the mobile number registered to your account.

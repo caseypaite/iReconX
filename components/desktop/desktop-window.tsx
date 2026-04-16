@@ -39,8 +39,6 @@ function WindowChrome({
 }: Omit<DesktopWindowProps, "frame" | "isMaximized" | "isMinimized" | "onFocus" | "onFrameChange"> & {
   edgeToEdge?: boolean;
 }) {
-  const titleLine = subtitle ? `${title} - ${subtitle}` : title;
-
   return (
       <div
         className={cn(
@@ -77,7 +75,10 @@ function WindowChrome({
           </button>
         </div>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-[10px] leading-none text-slate-200">{titleLine}</p>
+          <p className="truncate leading-none text-slate-200">
+            <span className="text-[12px] font-bold">{title}</span>
+            {subtitle ? <span className="text-[12px] font-normal text-slate-300">{` - ${subtitle}`}</span> : null}
+          </p>
         </div>
         <div className="w-6 shrink-0" />
       </div>
