@@ -89,11 +89,14 @@ See [INSTALLATION.md](./INSTALLATION.md) for the full setup flow and environment
 | `DATABASE_URL` | Yes | PostgreSQL connection string for Prisma |
 | `JWT_SECRET` | Yes | Secret used to sign and verify session JWTs |
 | `ENCRYPTION_SECRET` | Recommended | Secret used to encrypt stored data source configuration |
+| `SITE_URL` | Recommended for domains | Canonical public origin for the app, used for domain-based deployment metadata |
 | `OTP_MESSAGE_ENDPOINT` | For OTP delivery | Full URL for the external `POST /api/v1/message/single` endpoint |
 | `OTP_MESSAGE_API_KEY` | For OTP delivery | API key sent in the `x-api-key` header to the external provider |
 | `SEED_ADMIN_EMAIL` | For seeding | Email for the initial admin account |
 | `SEED_ADMIN_PASSWORD` | For seeding | Password for the initial admin account |
 | `SEED_ADMIN_MOBILE_NUMBER` | Optional | Seed-time mobile number; 10-digit inputs are treated as Indian and prefixed with `91` |
+
+`SITE_URL` can also be managed from the admin control panel under **Identities -> Site URL**. For a deployed domain, set it to your full HTTPS origin, for example `https://app.example.com`.
 
 ## Available scripts
 

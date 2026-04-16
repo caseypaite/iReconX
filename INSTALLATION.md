@@ -30,6 +30,7 @@ Update the values in `.env`:
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ireconx?schema=public"
 JWT_SECRET="replace-with-a-long-random-secret"
 ENCRYPTION_SECRET="replace-with-a-second-long-random-secret"
+SITE_URL="http://localhost:3000"
 OTP_MESSAGE_ENDPOINT="https://provider.example/api/v1/message/single"
 OTP_MESSAGE_API_KEY="replace-with-provider-api-key"
 SEED_ADMIN_EMAIL="admin@ireconx.local"
@@ -42,10 +43,13 @@ SEED_ADMIN_MOBILE_NUMBER=""
 - `DATABASE_URL`: PostgreSQL connection string used by Prisma.
 - `JWT_SECRET`: required; used to sign and verify session cookies.
 - `ENCRYPTION_SECRET`: strongly recommended; used to encrypt persisted data source configuration. If omitted, the app falls back to `JWT_SECRET`.
+- `SITE_URL`: canonical public origin for the app. Set this to your domain, such as `https://app.example.com`, when exposing the site outside localhost.
 - `OTP_MESSAGE_ENDPOINT`: full URL of the external message provider endpoint compatible with `POST /api/v1/message/single`.
 - `OTP_MESSAGE_API_KEY`: API key sent as `x-api-key` to the external message provider.
 - `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`: used by the seed script to create or update the initial admin account.
 - `SEED_ADMIN_MOBILE_NUMBER`: optional mobile number. If you provide exactly 10 digits, the app assumes an Indian mobile number and prefixes `91`. Other values must already include a full 10-15 digit number.
+
+After signing in as an admin, you can update the same value from the control panel under **Identities -> Site URL**. Saving from the panel persists the value to both the database and the current `.env` file.
 
 ## 3. Prepare the database
 

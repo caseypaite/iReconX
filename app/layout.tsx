@@ -3,13 +3,30 @@ import { Inter } from "next/font/google";
 
 import { Providers } from "@/app/providers";
 import "@/app/globals.css";
+import { getSiteUrl } from "@/lib/site-url";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "iReconX Analytics Studio",
-  description: "Secure data analytics and exploration studio with RBAC."
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const siteUrl = getSiteUrl();
+
+  return {
+    title: "iReconX Analytics Studio",
+    description: "Secure data analytics and exploration studio with RBAC.",
+    metadataBase: siteUrl ?? undefined,
+    alternates: siteUrl
+      ? {
+          canonical: "/"
+        }
+      : undefined,
+    openGraph: siteUrl
+      ? {
+          siteName: "iReconX Analytics Studio",
+          url: siteUrl
+        }
+      : undefined
+  };
+}
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -20,4 +37,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-

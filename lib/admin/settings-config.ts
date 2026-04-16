@@ -52,6 +52,16 @@ export const adminSettingDefinitions = [
     required: false
   },
   {
+    key: "SITE_URL",
+    category: "IDENTITIES",
+    label: "Site URL",
+    description: "Canonical public URL used when exposing the app through a domain name.",
+    helperText: "Optional. Set this to your deployed HTTPS origin, such as https://app.example.com.",
+    inputType: "url",
+    isSecret: false,
+    required: false
+  },
+  {
     key: "OTP_MESSAGE_ENDPOINT",
     category: "IDENTITIES",
     label: "OTP message endpoint",
@@ -111,6 +121,7 @@ export const adminSettingsSchema: z.ZodType<AdminSettingValueMap> = z
     JWT_SECRET: z.string().min(1, "JWT secret is required."),
     ENCRYPTION_SECRET: z.string(),
     OTP_SECRET: z.string(),
+    SITE_URL: z.union([z.literal(""), z.string().url("Site URL must be a valid URL.")]),
     OTP_MESSAGE_ENDPOINT: z.union([z.literal(""), z.string().url("OTP message endpoint must be a valid URL.")]),
     OTP_MESSAGE_API_KEY: z.string(),
     SEED_ADMIN_MOBILE_NUMBER: z.union([
