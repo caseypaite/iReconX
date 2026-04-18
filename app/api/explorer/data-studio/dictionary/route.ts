@@ -37,7 +37,9 @@ export async function GET(request: NextRequest) {
       userId: auth.user.sub,
       role: auth.user.role
     });
-    const sourceSchema = await introspectTidyverseSourceSchema(connection);
+    const sourceSchema = await introspectTidyverseSourceSchema(connection, {
+      maxTableColumns: null
+    });
     const rawDictionary = await getAccessibleTidyverseSourceDictionaryValue({
       sourceId: parsed.data.sourceId,
       userId: auth.user.sub,

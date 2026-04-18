@@ -39,12 +39,24 @@ function normalizeString(value: unknown) {
 }
 
 export async function introspectTidyverseSourceSchema(
-  connection: SourceConnection
+  connection: SourceConnection,
+  options?: {
+    maxSchemaTables?: number;
+    maxTableColumns?: number | null;
+  }
 ): Promise<TidyverseSourceSchemaDefinition | null> {
   const handle = await connectServerDatabase(connection);
 
   try {
     const schemaName = connection.tableSchema ?? connection.schema;
+    const maxSchemaTables = options && "maxSchemaTables" in options ? options.maxSchemaTables ?? MAX_SCHEMA_TABLES : MAX_SCHEMA_TABLES;
+    const maxTableColumns: number | null =
+      options && "maxTableColumns" in options
+        ? options.maxTableColumns === null
+          ? null
+          : options.maxTableColumns ?? MAX_TABLE_COLUMNS
+        : MAX_TABLE_COLUMNS;
+    const unlimitedColumns = maxTableColumns === null;
 
     if (connection.tableName) {
       if (handle.driver === "postgres") {
@@ -61,12 +73,12 @@ export async function introspectTidyverseSourceSchema(
 
         return {
           scope: "table",
-          truncated: false,
+          truncated: !unlimitedColumns && rows.length > maxTableColumns,
           tables: [
             {
               schema: schemaName,
               name: connection.tableName,
-              columns: rows.slice(0, MAX_TABLE_COLUMNS).map((row) => ({
+              columns: (unlimitedColumns ? rows : rows.slice(0, maxTableColumns)).map((row) => ({
                 name: normalizeString(row.column_name),
                 dataType: normalizeString(row.data_type),
                 isNullable: normalizeBoolean(row.is_nullable)
@@ -89,12 +101,12 @@ export async function introspectTidyverseSourceSchema(
 
       return {
         scope: "table",
-        truncated: false,
+        truncated: !unlimitedColumns && rows.length > maxTableColumns,
         tables: [
           {
             schema: schemaName,
             name: connection.tableName,
-            columns: rows.slice(0, MAX_TABLE_COLUMNS).map((row) => ({
+            columns: (unlimitedColumns ? rows : rows.slice(0, maxTableColumns)).map((row) => ({
               name: normalizeString(row.column_name),
               dataType: normalizeString(row.data_type),
               isNullable: normalizeBoolean(row.is_nullable)
@@ -114,9 +126,9 @@ export async function introspectTidyverseSourceSchema(
           ORDER BY table_name
           LIMIT $2
         `,
-        [schemaName, MAX_SCHEMA_TABLES + 1]
+        [schemaName, maxSchemaTables + 1]
       );
-      const selectedTables = tables.slice(0, MAX_SCHEMA_TABLES).map((row) => normalizeString(row.table_name));
+      const selectedTables = tables.slice(0, maxSchemaTables).map((row) => normalizeString(row.table_name));
 
       if (selectedTables.length === 0) {
         return {
@@ -148,7 +160,7 @@ export async function introspectTidyverseSourceSchema(
 
       for (const row of columns) {
         const table = byTable.get(normalizeString(row.table_name));
-        if (!table || table.columns.length >= MAX_TABLE_COLUMNS) {
+        if (!table || (!unlimitedColumns && table.columns.length >= maxTableColumns)) {
           continue;
         }
 
@@ -161,7 +173,7 @@ export async function introspectTidyverseSourceSchema(
 
       return {
         scope: "schema",
-        truncated: tables.length > MAX_SCHEMA_TABLES,
+        truncated: tables.length > maxSchemaTables,
         tables: selectedTables.map((tableName) => byTable.get(tableName)!).filter(Boolean)
       };
     }
@@ -175,9 +187,9 @@ export async function introspectTidyverseSourceSchema(
         ORDER BY table_name
         LIMIT ?
       `,
-      [connection.database ?? connection.schema, MAX_SCHEMA_TABLES + 1]
+      [connection.database ?? connection.schema, maxSchemaTables + 1]
     );
-    const selectedTables = tables.slice(0, MAX_SCHEMA_TABLES).map((row) => normalizeString(row.table_name));
+    const selectedTables = tables.slice(0, maxSchemaTables).map((row) => normalizeString(row.table_name));
 
     if (selectedTables.length === 0) {
       return {
@@ -211,7 +223,7 @@ export async function introspectTidyverseSourceSchema(
       byTable.set(tableName, {
         schema: schemaName,
         name: tableName,
-        columns: columns.slice(0, MAX_TABLE_COLUMNS).map((row) => ({
+        columns: (unlimitedColumns ? columns : columns.slice(0, maxTableColumns)).map((row) => ({
           name: normalizeString(row.column_name),
           dataType: normalizeString(row.data_type),
           isNullable: normalizeBoolean(row.is_nullable)
@@ -221,7 +233,7 @@ export async function introspectTidyverseSourceSchema(
 
     return {
       scope: "schema",
-      truncated: tables.length > MAX_SCHEMA_TABLES,
+      truncated: tables.length > maxSchemaTables,
       tables: selectedTables.map((tableName) => byTable.get(tableName)!).filter(Boolean)
     };
   } finally {

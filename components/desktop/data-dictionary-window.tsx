@@ -216,8 +216,8 @@ export function DataDictionaryWindow() {
 
   return (
     <div className="h-full overflow-hidden bg-slate-950/10 p-2">
-      <div className="grid h-full gap-2 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <Card className={compactCardClassName}>
+      <div className="grid h-full min-h-0 gap-2 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <Card className={`${compactCardClassName} min-h-0 overflow-hidden`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <HoverSubtitleTitle
@@ -294,7 +294,7 @@ export function DataDictionaryWindow() {
           </div>
         </Card>
 
-        <Card className={compactCardClassName}>
+        <Card className={`${compactCardClassName} min-h-0 overflow-hidden`}>
           {!selectedSource ? (
             <div className="flex h-full items-center justify-center border border-dashed border-white/10 bg-slate-950/20 px-4 text-center text-sm text-slate-400">
               Select a data source to manage its dictionary.
@@ -308,7 +308,7 @@ export function DataDictionaryWindow() {
               No column metadata is available for this source.
             </div>
           ) : (
-            <div className="flex h-full flex-col">
+            <div className="flex h-full min-h-0 flex-col">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 text-sm font-medium text-white">
@@ -348,7 +348,7 @@ export function DataDictionaryWindow() {
                 />
               </div>
 
-              <div className="mt-3 flex-1 overflow-auto border border-white/10 bg-slate-950/20 p-3">
+              <div className="mt-3 min-h-0 flex-1 overflow-auto border border-white/10 bg-slate-950/20 p-3">
                 <div className="space-y-4">
                   {selectedDetail.tables.map((table) => (
                     <div key={`${table.schema}.${table.name}`} className="space-y-2 border border-white/10 bg-slate-950/35 p-3">
