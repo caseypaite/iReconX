@@ -125,47 +125,57 @@ export async function POST(request: NextRequest) {
         };
   const dataset = conversionResult.dataset;
 
-  const storedUpload = await storeTemporaryUploadDataset({
-    dataset,
-    tableName: normalizedTableName,
-    sourceFileName: file.name,
-    sourceFileFormat: getTemporaryDatasetFormat(extension),
-    sourceSheetName: sheetName,
-    uploadedById: auth.user.sub
-  });
-
-  dataset.metadata = {
-    ...(dataset.metadata ?? {}),
-    temporaryDatasetId: storedUpload.id,
-    temporaryTableName: storedUpload.tableName,
-    temporaryDatasetExpiresAt: storedUpload.expiresAt,
-    storageSchema: TEMPORARY_ANALYSIS_SCHEMA,
-    importConversionIssueCount: conversionResult.conversionIssues.length,
-    importConversionIssues:
-      conversionResult.conversionIssues.length > 0 ? conversionResult.conversionIssues.join(" | ") : null
-  };
-
-  if (importToPersistent) {
-    const persistentDataset = await storePersistentDataset({
+  try {
+    const storedUpload = await storeTemporaryUploadDataset({
       dataset,
       tableName: normalizedTableName,
-      origin: PERSISTENT_DATASET_IMPORT_ORIGIN,
-      sourceLabel: file.name,
-      createdById: auth.user.sub,
-      metadata: {
-        sheet: sheetName,
-        uploadedBy: auth.user.email
-      }
+      sourceFileName: file.name,
+      sourceFileFormat: getTemporaryDatasetFormat(extension),
+      sourceSheetName: sheetName,
+      uploadedById: auth.user.sub
     });
 
     dataset.metadata = {
       ...(dataset.metadata ?? {}),
-      importedPermanently: true,
-      persistentDatasetId: persistentDataset.id,
-      persistentTableName: persistentDataset.tableName,
-      persistentStorageSchema: PERSISTENT_IMPORT_SCHEMA
+      temporaryDatasetId: storedUpload.id,
+      temporaryTableName: storedUpload.tableName,
+      temporaryDatasetExpiresAt: storedUpload.expiresAt,
+      storageSchema: TEMPORARY_ANALYSIS_SCHEMA,
+      importConversionIssueCount: conversionResult.conversionIssues.length,
+      importConversionIssues:
+        conversionResult.conversionIssues.length > 0 ? conversionResult.conversionIssues.join(" | ") : null
     };
-  }
 
-  return NextResponse.json({ dataset });
+    if (importToPersistent) {
+      const persistentDataset = await storePersistentDataset({
+        dataset,
+        tableName: normalizedTableName,
+        origin: PERSISTENT_DATASET_IMPORT_ORIGIN,
+        sourceLabel: file.name,
+        createdById: auth.user.sub,
+        metadata: {
+          sheet: sheetName,
+          uploadedBy: auth.user.email
+        }
+      });
+
+      dataset.metadata = {
+        ...(dataset.metadata ?? {}),
+        importedPermanently: true,
+        persistentDatasetId: persistentDataset.id,
+        persistentTableName: persistentDataset.tableName,
+        persistentStorageSchema: PERSISTENT_IMPORT_SCHEMA
+      };
+    }
+
+    return NextResponse.json({ dataset });
+  } catch (error) {
+    console.error("Data Studio upload failed.", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Unable to store the uploaded dataset."
+      },
+      { status: 500 }
+    );
+  }
 }

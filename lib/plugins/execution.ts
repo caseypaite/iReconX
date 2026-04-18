@@ -8,6 +8,7 @@ import {
   type PluginExecutionResult,
   type PluginExecutionTarget
 } from "@/lib/plugins/protocol";
+import type { SourceConnection } from "@/lib/source-connection";
 
 export function cloneDataset(dataset: StudioDataset, labelOverride?: string): StudioDataset {
   return {
@@ -37,6 +38,7 @@ export async function executePluginChain(args: {
   definitions: PluginDefinitionRecord[];
   initialDataset: StudioDataset | null;
   payload?: Record<string, unknown> | null;
+  initialConnection?: SourceConnection | null;
   executionTarget: PluginExecutionTarget;
   steps: Array<{
     pluginId: string;
@@ -62,15 +64,16 @@ export async function executePluginChain(args: {
       throw new Error(`${definition.name} cannot run on the ${args.executionTarget} target.`);
     }
 
-    const input = createPluginExecutionInput({
-      pluginId: definition.id,
-      pluginName: definition.name,
-      executionTarget: args.executionTarget,
-      dataset: currentDataset,
-      payload: args.payload ?? null,
-      params: step.params ?? {},
-      upstream: results
-    });
+      const input = createPluginExecutionInput({
+        pluginId: definition.id,
+        pluginName: definition.name,
+        executionTarget: args.executionTarget,
+        dataset: currentDataset,
+        payload: args.payload ?? null,
+        params: step.params ?? {},
+        connection: args.initialConnection ?? null,
+        upstream: results
+      });
 
     const rawResult = await args.runPlugin(definition, input);
     const result = normalizePluginResult(rawResult);
@@ -93,6 +96,7 @@ export async function executePluginGraph(args: {
   definitions: PluginDefinitionRecord[];
   initialDataset: StudioDataset | null;
   payload?: Record<string, unknown> | null;
+  initialConnection?: SourceConnection | null;
   executionTarget: PluginExecutionTarget;
   steps: PluginGraphStep[];
   resultParentNodeId?: string | null;
@@ -111,6 +115,7 @@ export async function executePluginGraph(args: {
     {
       dataset: StudioDataset | null;
       lineage: PluginExecutionResult[];
+      connection: SourceConnection | null;
       result: PluginExecutionResult;
     }
   >();
@@ -146,9 +151,11 @@ export async function executePluginGraph(args: {
 
     const parentDataset = parentState?.dataset ?? args.initialDataset ?? null;
     const parentLineage = parentState?.lineage ?? [];
+    const parentConnection = parentState?.connection ?? (step.parentNodeId === "source" ? args.initialConnection ?? null : null);
 
     let result: PluginExecutionResult;
     let nextDataset = parentDataset;
+    let nextConnection = parentConnection;
 
     if (parentState && parentState.result.status === "error") {
       result = {
@@ -164,6 +171,7 @@ export async function executePluginGraph(args: {
         dataset: parentDataset,
         payload: args.payload ?? null,
         params: step.params ?? {},
+        connection: parentConnection,
         upstream: parentLineage
       });
 
@@ -178,6 +186,7 @@ export async function executePluginGraph(args: {
     nodeStateMap.set(step.nodeId, {
       dataset: nextDataset,
       lineage,
+      connection: nextConnection,
       result
     });
     results.push(result);

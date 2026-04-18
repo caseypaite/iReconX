@@ -99,6 +99,7 @@ model User {
   sessionVersion     Int                 @default(0)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  defaultAiProvider  String?             @default("copilot")
   auditLogs          AuditLog[]          @relation("AuditActor")
   dataSources        DataSource[]        @relation("DataSourceOwner")
   dataSourceAccesses DataSourceAccess[]
@@ -109,6 +110,7 @@ model User {
   aiProviderSettings UserAiProviderSetting[] @relation("UserAiProviderSettings")
   temporaryAnalysisDatasets TemporaryAnalysisDataset[] @relation("TemporaryAnalysisOwner")
   persistentDatasets PersistentDataset[] @relation("PersistentDatasetOwner")
+  transformWorkflows TransformWorkflow[] @relation("TransformWorkflowOwner")
 
   @@schema("public")
 }
@@ -131,6 +133,7 @@ model DataSource {
   id               String         @id @default(cuid())
   name             String
   description      String?
+  dataDictionary   String?
   type             DataSourceType
   configCiphertext String
   createdById      String?
@@ -273,6 +276,7 @@ model PersistentDataset {
   id             String                  @id @default(cuid())
   label          String
   tableName      String                  @unique
+  dataDictionary String?
   origin         PersistentDatasetOrigin
   sourceLabel    String?
   sourceUri      String?
@@ -302,4 +306,18 @@ model PersistentDatasetRow {
   @@unique([datasetId, rowIndex])
   @@index([datasetId])
   @@schema("import_archive")
+}
+
+model TransformWorkflow {
+  id        String   @id @default(cuid())
+  name      String
+  definition Json
+  ownerId   String
+  owner     User     @relation("TransformWorkflowOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, name])
+  @@index([ownerId, updatedAt])
+  @@schema("public")
 }

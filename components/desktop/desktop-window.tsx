@@ -42,12 +42,12 @@ function WindowChrome({
   return (
       <div
         className={cn(
-          "flex h-full flex-col overflow-hidden border border-white/15 bg-slate-950/55 shadow-[0_30px_90px_rgba(15,23,42,0.45)] backdrop-blur-2xl transition",
+          "desktop-window-frame flex h-full flex-col overflow-hidden transition",
           "rounded-[12px]",
-          isFocused ? "ring-1 ring-sky-300/25" : "opacity-95"
+          isFocused ? "desktop-window-focused" : "opacity-95"
         )}
       >
-      <div className="desktop-window-drag flex h-[23px] items-center gap-1.5 border-b border-white/10 bg-white/5 px-2">
+      <div className="desktop-window-drag desktop-window-header flex h-[23px] items-center gap-1.5 px-2">
         <div className="flex items-center gap-1.5">
           <button
             aria-label="Close window"
@@ -75,9 +75,9 @@ function WindowChrome({
           </button>
         </div>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate leading-none text-slate-200">
+          <p className="desktop-window-title truncate leading-none">
             <span className="text-[12px] font-bold">{title}</span>
-            {subtitle ? <span className="text-[12px] font-normal text-slate-300">{` - ${subtitle}`}</span> : null}
+            {subtitle ? <span className="desktop-window-subtitle text-[12px] font-normal">{` - ${subtitle}`}</span> : null}
           </p>
         </div>
         <div className="w-6 shrink-0" />
@@ -107,7 +107,7 @@ export function DesktopWindow({
 
   if (isMaximized) {
     return (
-      <div className="absolute inset-0" onMouseDown={onFocus}>
+      <div className="absolute inset-0 pointer-events-auto" onMouseDown={onFocus}>
         <WindowChrome
           title={title}
           subtitle={subtitle}
@@ -125,7 +125,7 @@ export function DesktopWindow({
   return (
     <Rnd
       bounds="parent"
-      className="absolute"
+      className="absolute pointer-events-auto"
       dragHandleClassName="desktop-window-drag"
       minHeight={260}
       minWidth={360}

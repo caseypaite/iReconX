@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requestPluginGeneration } from "@/lib/ai/providers";
+import { getDefaultUserAiProvider } from "@/lib/ai/user-settings";
 import { requireApiSession } from "@/lib/auth/api";
 import {
   assertValidPluginSourceCode,
@@ -40,10 +41,11 @@ export async function POST(request: NextRequest) {
     dataset: parsed.data.dataset ?? null,
     payload: parsed.data.payload ?? null
   });
+  const provider = parsed.data.provider ?? (await getDefaultUserAiProvider(auth.user.sub, auth.user.role));
 
   try {
     const response = await requestPluginGeneration({
-      provider: parsed.data.provider,
+      provider,
       userId: auth.user.sub,
       role: auth.user.role,
       systemPrompt: protocolPrompt,
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       draft,
-      provider: parsed.data.provider,
+      provider,
       providerModel: response.model,
       generationPrompt: protocolPrompt
     });

@@ -3,9 +3,10 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, RefreshCw } from "lucide-react";
 
-import { aiProviderCatalog, aiProviderOrder, type AiProviderFormMap } from "@/lib/ai/provider-config";
+import { aiProviderCatalog, aiProviderOrder, type AiProviderFormMap, type UserAiSettingsPayload } from "@/lib/ai/provider-config";
+import type { PluginProviderId } from "@/lib/plugins/protocol";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,6 +27,13 @@ type ProfileState = {
   linkedinUrl: string;
   mobileNumber: string;
   role: AppRole;
+};
+
+type ProviderCatalogModel = {
+  id: string;
+  name: string;
+  publisher: string;
+  summary: string;
 };
 
 const emptyProfile: ProfileState = {
@@ -110,11 +118,15 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [aiSettings, setAiSettings] = useState<AiProviderFormMap>(emptyAiSettings);
+  const [defaultAiProvider, setDefaultAiProvider] = useState<PluginProviderId>("copilot");
   const [loadingAiSettings, setLoadingAiSettings] = useState(true);
   const [savingAiSettings, setSavingAiSettings] = useState(false);
   const [aiSettingsMessage, setAiSettingsMessage] = useState<string | null>(null);
   const [aiSettingsError, setAiSettingsError] = useState<string | null>(null);
   const [revealedAiKeys, setRevealedAiKeys] = useState<Partial<Record<keyof AiProviderFormMap, boolean>>>({});
+  const [availableModels, setAvailableModels] = useState<Partial<Record<keyof AiProviderFormMap, ProviderCatalogModel[]>>>({});
+  const [loadingModels, setLoadingModels] = useState<Partial<Record<keyof AiProviderFormMap, boolean>>>({});
+  const [modelCatalogErrors, setModelCatalogErrors] = useState<Partial<Record<keyof AiProviderFormMap, string>>>({});
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     nextPassword: "",
@@ -177,14 +189,9 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
         const response = await fetch("/api/account/ai-settings", {
           cache: "no-store"
         });
-        const payload = (await response.json().catch(() => null)) as
-          | {
-              error?: string;
-              providers?: AiProviderFormMap;
-            }
-          | null;
+        const payload = (await response.json().catch(() => null)) as (UserAiSettingsPayload & { error?: string }) | null;
 
-        if (!response.ok || !payload?.providers) {
+        if (!response.ok || !payload?.providers || !payload.defaultProvider) {
           if (!cancelled) {
             setAiSettingsError(payload?.error ?? "Unable to load AI settings.");
             setLoadingAiSettings(false);
@@ -194,6 +201,8 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
 
         if (!cancelled) {
           setAiSettings(payload.providers);
+          setDefaultAiProvider(payload.defaultProvider);
+          void loadProviderModels("copilot", payload.providers.copilot);
           setLoadingAiSettings(false);
         }
       } catch {
@@ -210,6 +219,91 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
       cancelled = true;
     };
   }, []);
+
+  async function loadProviderModels(
+    provider: keyof AiProviderFormMap,
+    providerSettings: AiProviderFormMap[keyof AiProviderFormMap]
+  ) {
+    if (provider !== "copilot") {
+      return;
+    }
+
+    if (!providerSettings.apiKey.trim()) {
+      setAvailableModels((current) => ({
+        ...current,
+        [provider]: []
+      }));
+      setModelCatalogErrors((current) => ({
+        ...current,
+        [provider]: ""
+      }));
+      setLoadingModels((current) => ({
+        ...current,
+        [provider]: false
+      }));
+      return;
+    }
+
+    setLoadingModels((current) => ({
+      ...current,
+      [provider]: true
+    }));
+    setModelCatalogErrors((current) => ({
+      ...current,
+      [provider]: ""
+    }));
+
+    try {
+      const response = await fetch("/api/account/ai-settings/models", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          provider,
+          endpoint: providerSettings.endpoint,
+          apiKey: providerSettings.apiKey
+        })
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            models?: ProviderCatalogModel[];
+          }
+        | null;
+
+      if (!response.ok || !payload?.models) {
+        setModelCatalogErrors((current) => ({
+          ...current,
+          [provider]: payload?.error ?? "Unable to load available models."
+        }));
+        setAvailableModels((current) => ({
+          ...current,
+          [provider]: []
+        }));
+        return;
+      }
+
+      setAvailableModels((current) => ({
+        ...current,
+        [provider]: payload.models
+      }));
+    } catch {
+      setModelCatalogErrors((current) => ({
+        ...current,
+        [provider]: "Unable to load available models."
+      }));
+      setAvailableModels((current) => ({
+        ...current,
+        [provider]: []
+      }));
+    } finally {
+      setLoadingModels((current) => ({
+        ...current,
+        [provider]: false
+      }));
+    }
+  }
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -312,24 +406,22 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
+          defaultProvider: defaultAiProvider,
           providers: aiSettings
         })
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | {
-            error?: string;
-            providers?: AiProviderFormMap;
-          }
-        | null;
+      const payload = (await response.json().catch(() => null)) as (UserAiSettingsPayload & { error?: string }) | null;
 
-      if (!response.ok || !payload?.providers) {
+      if (!response.ok || !payload?.providers || !payload.defaultProvider) {
         setAiSettingsError(payload?.error ?? "Unable to save AI settings.");
         setSavingAiSettings(false);
         return;
       }
 
       setAiSettings(payload.providers);
+      setDefaultAiProvider(payload.defaultProvider);
+      void loadProviderModels("copilot", payload.providers.copilot);
       setAiSettingsMessage("AI provider settings saved for this account.");
       setSavingAiSettings(false);
     } catch {
@@ -544,17 +636,42 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <HoverSubtitleTitle
-              subtitle="AI endpoints, models, and API keys are personal to this account and are only used when you generate plugins."
+              subtitle="AI endpoints, models, API keys, and the account default provider are personal to this account and drive AI-enabled features."
               title="AI provider configuration"
             />
           </div>
           <Badge className="rounded-[12px] border-white/15 bg-white/10 text-slate-100">Personal keys only</Badge>
         </div>
         <form className="mt-5 space-y-4" onSubmit={saveAiSettings}>
+          <div className="rounded-[12px] border border-white/10 bg-white/5 p-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-200" htmlFor="default-ai-provider">
+                Default AI provider
+              </label>
+              <select
+                className="w-full rounded-[12px] border border-white/10 bg-slate-950/40 px-3.5 py-2.5 text-sm text-slate-100 outline-none backdrop-blur-xl focus:border-sky-400"
+                id="default-ai-provider"
+                onChange={(event) => setDefaultAiProvider(event.target.value as PluginProviderId)}
+                value={defaultAiProvider}
+              >
+                {aiProviderOrder.map((provider) => (
+                  <option key={provider} value={provider}>
+                    {aiProviderCatalog[provider].label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Plugin generation, tidyverse-step code generation, and result-viewer AI previews use this provider by default.
+              </p>
+            </div>
+          </div>
           <div className="grid gap-4 xl:grid-cols-3">
             {aiProviderOrder.map((provider) => {
               const details = aiProviderCatalog[provider];
               const isVisible = Boolean(revealedAiKeys[provider]);
+              const providerModels = availableModels[provider] ?? [];
+              const currentModel = aiSettings[provider].model;
+              const currentModelInCatalog = currentModel ? providerModels.some((model) => model.id === currentModel) : false;
 
               return (
                 <div key={provider} className="rounded-[12px] border border-white/10 bg-white/5 p-4">
@@ -590,6 +707,57 @@ export function AccountSettingsPanel({ role }: { role: AppRole }) {
                       />
                     </div>
                     <div className="space-y-2">
+                      {provider === "copilot" ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-sm font-medium text-slate-200" htmlFor={`${provider}-model-catalog`}>
+                              Available coding models
+                            </label>
+                            <Button
+                              className="rounded-[12px]"
+                              disabled={Boolean(loadingModels[provider])}
+                              onClick={() => void loadProviderModels(provider, aiSettings[provider])}
+                              type="button"
+                              variant="outline"
+                            >
+                              <RefreshCw className={`h-4 w-4 ${loadingModels[provider] ? "animate-spin" : ""}`} />
+                            </Button>
+                          </div>
+                          <select
+                            className="w-full rounded-[18px] border border-white/10 bg-slate-950/40 px-3.5 py-2.5 text-sm text-slate-100 outline-none backdrop-blur-xl focus:border-sky-400"
+                            id={`${provider}-model-catalog`}
+                            onChange={(event) =>
+                              setAiSettings((current) => ({
+                                ...current,
+                                [provider]: {
+                                  ...current[provider],
+                                  model: event.target.value
+                                }
+                              }))
+                            }
+                            value={currentModelInCatalog ? currentModel : currentModel ? "__custom__" : ""}
+                          >
+                            <option value="">{loadingModels[provider] ? "Loading coding models..." : "Choose a coding model from GitHub Models"}</option>
+                            {providerModels.map((model) => (
+                              <option key={model.id} value={model.id}>
+                                {model.publisher ? `${model.id} - ${model.publisher}` : model.id}
+                              </option>
+                            ))}
+                            {currentModel && !currentModelInCatalog ? (
+                              <option disabled value="__custom__">{`${currentModel} (manual)`}</option>
+                            ) : null}
+                          </select>
+                          {modelCatalogErrors[provider] ? <p className="text-xs text-rose-300">{modelCatalogErrors[provider]}</p> : null}
+                          {!modelCatalogErrors[provider] && providerModels.length > 0 ? (
+                            <p className="text-xs text-slate-500">{`${providerModels.length} coding-suitable models available from the current GitHub Models catalog.`}</p>
+                          ) : null}
+                          {!modelCatalogErrors[provider] && providerModels.length === 0 && !loadingModels[provider] ? (
+                            <p className="text-xs text-slate-500">
+                              No coding-focused models were returned for the current GitHub Models account. Manual model values are still preserved.
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <label className="text-sm font-medium text-slate-200" htmlFor={`${provider}-model`}>
                         Model
                       </label>

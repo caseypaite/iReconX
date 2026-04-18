@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { StudioCellValue, StudioColumn, StudioDataset, StudioDatasetSourceKind, StudioRow } from "@/lib/data-studio";
+import { sourceConnectionSchema, type SourceConnection } from "@/lib/source-connection";
 
 export const PLUGIN_PROTOCOL_VERSION = "ireconx.plugin.v1";
 export const pluginRuntimeOptions = ["browser", "server", "both"] as const;
@@ -12,6 +13,10 @@ export type PluginRuntimeValue = (typeof pluginRuntimeOptions)[number];
 export type PluginScopeValue = (typeof pluginScopeOptions)[number];
 export type PluginProviderId = (typeof pluginProviderOptions)[number];
 export type PluginExecutionTarget = (typeof pluginExecutionTargetOptions)[number];
+export type PluginDatabaseHandle = {
+  driver: "postgres" | "mysql";
+  query: (sql: string, params?: readonly unknown[]) => Promise<Array<Record<string, unknown>>>;
+};
 
 export type PluginExecutionStatus = "success" | "error";
 
@@ -26,7 +31,7 @@ const datasetMetadataSchema: z.ZodType<Record<string, StudioCellValue>> = z.reco
 
 export const studioDatasetSchema: z.ZodType<StudioDataset> = z.object({
   label: z.string(),
-  sourceKind: z.enum(["upload", "data-source-catalog"]) as z.ZodType<StudioDatasetSourceKind>,
+  sourceKind: z.enum(["upload", "data-source-catalog", "generated"]) as z.ZodType<StudioDatasetSourceKind>,
   rowCount: z.number().int().nonnegative(),
   columns: z.array(studioColumnSchema),
   rows: z.array(studioRowSchema),
@@ -59,6 +64,7 @@ export const pluginExecutionInputSchema = z.object({
   dataset: studioDatasetSchema.nullable(),
   payload: z.record(z.any()).nullable(),
   params: z.record(z.any()),
+  connection: sourceConnectionSchema.nullable().optional(),
   upstream: z.array(pluginExecutionResultSchema),
   invocation: z.object({
     pluginId: z.string(),
@@ -67,7 +73,29 @@ export const pluginExecutionInputSchema = z.object({
   })
 });
 
-export type PluginExecutionInput = z.infer<typeof pluginExecutionInputSchema>;
+export type PluginExecutionInput = z.infer<typeof pluginExecutionInputSchema> & {
+  db?: PluginDatabaseHandle | null;
+};
+
+export const pluginManifestSchema = z.object({
+  protocolVersion: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  runtime: z.string().optional(),
+  inputForm: z.string().trim().optional()
+});
+
+export type PluginManifest = z.infer<typeof pluginManifestSchema>;
+
+type PluginRuntimeDataset = StudioDataset & {
+  schema: {
+    fields: Array<{
+      name: string;
+      label: string;
+      type: StudioColumn["kind"];
+    }>;
+  };
+};
 
 export const generatedPluginDraftSchema = z.object({
   name: z.string().min(1),
@@ -110,7 +138,7 @@ export const pluginDefinitionPayloadSchema = z.object({
 export type PluginDefinitionPayload = z.infer<typeof pluginDefinitionPayloadSchema>;
 
 export const pluginGenerationRequestSchema = z.object({
-  provider: pluginProviderSchema,
+  provider: pluginProviderSchema.optional(),
   runtime: pluginRuntimeSchema,
   scope: pluginScopeSchema,
   userPrompt: z.string().trim().min(1, "Prompt is required."),
@@ -152,13 +180,30 @@ export function createPluginExecutionInput(args: {
   dataset: StudioDataset | null;
   payload?: Record<string, unknown> | null;
   params?: Record<string, unknown>;
+  connection?: SourceConnection | null;
+  db?: PluginDatabaseHandle | null;
   upstream?: PluginExecutionResult[];
 }): PluginExecutionInput {
+  const runtimeDataset = args.dataset
+    ? ({
+        ...args.dataset,
+        schema: {
+          fields: args.dataset.columns.map((column) => ({
+            name: column.key,
+            label: column.label,
+            type: column.kind
+          }))
+        }
+      } satisfies PluginRuntimeDataset)
+    : null;
+
   return {
     protocolVersion: PLUGIN_PROTOCOL_VERSION,
-    dataset: args.dataset ?? null,
+    dataset: runtimeDataset,
     payload: args.payload ?? null,
     params: args.params ?? {},
+    connection: args.connection ?? null,
+    db: args.db ?? null,
     upstream: args.upstream ?? [],
     invocation: {
       pluginId: args.pluginId,
@@ -218,24 +263,22 @@ export function buildPluginGenerationPrompt(args: {
     `The plugin runtime target is ${args.runtime}.`,
     "Return ONLY valid JSON with this exact shape:",
     '{"name":"string","description":"string","sourceCode":"string"}',
-    "The sourceCode value must be a CommonJS-compatible module that defines:",
-    '1. const plugin = { protocolVersion: "ireconx.plugin.v1", name: "...", description: "...", runtime: "browser|server|both" }',
+    "sourceCode must be a CommonJS-compatible module with:",
+    '1. const plugin = { protocolVersion: "ireconx.plugin.v1", name: "...", description: "...", runtime: "browser|server|both", inputForm?: "<label>Threshold <input name=\\"threshold\\" type=\\"number\\" value=\\"10\\" /></label>" }',
     "2. async function run(input, helpers) { ... }",
     "3. module.exports = { plugin, run }",
-    "The run function receives a validated input envelope with:",
-    "- input.dataset: current StudioDataset or null",
-    "- input.payload: arbitrary JSON payload or null",
-    "- input.params: plugin step parameters",
-    "- input.upstream: prior plugin results in the chain",
-    "- input.invocation: plugin metadata and requested execution target",
-    "Available helpers:",
-    "- helpers.createDatasetFromRecords(records, label, sourceKind, metadata)",
-    "- helpers.cloneDataset(dataset, labelOverride?)",
-    "The run function MUST return:",
+     "run(input, helpers) receives:",
+     "- input.dataset: current StudioDataset or null",
+     "- input.dataset.schema.fields: compatibility alias for dataset columns with { name, label, type }",
+     "- input.payload: arbitrary JSON payload or null",
+     "- input.params: plugin step parameters",
+     "- input.connection: Source node connection metadata; when running on the server it may include credential fields",
+     "- input.db: live server-side database handle when Source is configured on a server run; use await input.db.query(sql, params)",
+     "- input.upstream: prior plugin results in the chain",
+     "- input.invocation: plugin metadata and requested execution target",
+    "If plugin.inputForm is present, every control must have a name attribute so configured values flow into input.params.",
+    "run must return:",
     '{"protocolVersion":"ireconx.plugin.v1","status":"success|error","summary":"string","dataset":null|StudioDataset,"outputs":{},"logs":[]}',
-    "Plugins are data processors only. Never access DOM or page APIs such as document, window, getElementById, querySelector, event listeners, localStorage, or sessionStorage.",
-    "Do not import packages, access network, read files, use eval, use Function constructors, or access process/global secrets.",
-    "Prefer deterministic transforms over commentary.",
     `Dataset context: ${JSON.stringify(datasetSummary)}`,
     `Payload context: ${JSON.stringify(args.payload ?? null)}`,
     `User request: ${args.userPrompt}`

@@ -1,0 +1,24 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libcurl4-openssl-dev \
+    libmariadb-dev \
+    libpq-dev \
+    libsodium-dev \
+    libssl-dev \
+    libxml2-dev \
+    openssl \
+    r-base \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+
+RUN npm ci
+RUN R -q -e "options(repos = c(CRAN = 'https://cloud.r-project.org')); install.packages(c('dplyr', 'tibble', 'tidyr', 'readr', 'stringr', 'purrr', 'dbplyr', 'jsonlite', 'DBI', 'RPostgres', 'RMariaDB'))"
+RUN R -q -e "stopifnot(all(c('dplyr', 'dbplyr', 'DBI', 'RPostgres', 'RMariaDB') %in% rownames(installed.packages())))"
+
+EXPOSE 3000

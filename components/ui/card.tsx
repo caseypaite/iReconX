@@ -9,7 +9,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[18px] border border-white/10 bg-slate-950/35 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.32)] backdrop-blur-xl",
+        "desktop-card rounded-[18px] p-5",
         className
       )}
     >
@@ -19,9 +19,9 @@ export function Card({
 }
 
 export function CardTitle({ children }: PropsWithChildren) {
-  return <h3 className="text-lg font-semibold text-white">{children}</h3>;
+  return <h3 className="desktop-card-title text-lg font-semibold">{children}</h3>;
 }
 
 export function CardDescription({ children }: PropsWithChildren) {
-  return <p className="mt-1 text-sm text-slate-400">{children}</p>;
+  return <p className="desktop-card-description mt-1 text-sm">{children}</p>;
 }

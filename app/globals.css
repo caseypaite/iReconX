@@ -23,40 +23,213 @@ body {
   background-attachment: fixed;
 }
 
+.desktop-wallpaper {
+  --desktop-text: #f8fafc;
+  --desktop-muted-text: #e2e8f0;
+  --desktop-subtle-text: #94a3b8;
+  --desktop-wallpaper-base: #020617;
+  --desktop-ambient-1: rgba(125, 211, 252, 0.12);
+  --desktop-ambient-2: rgba(196, 181, 253, 0.12);
+  --desktop-ambient-3: rgba(59, 130, 246, 0.12);
+  --desktop-menu-bg: rgba(2, 6, 23, 0.5);
+  --desktop-menu-solid-bg: rgba(15, 23, 42, 0.96);
+  --desktop-menu-border: rgba(255, 255, 255, 0.1);
+  --desktop-menu-button-hover-bg: rgba(255, 255, 255, 0.08);
+  --desktop-popover-bg: rgba(2, 6, 23, 0.85);
+  --desktop-popover-solid-bg: rgba(15, 23, 42, 0.98);
+  --desktop-popover-border: rgba(255, 255, 255, 0.1);
+  --desktop-popover-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+  --desktop-status-bg: rgba(255, 255, 255, 0.08);
+  --desktop-status-solid-bg: rgba(15, 23, 42, 0.92);
+  --desktop-status-border: rgba(255, 255, 255, 0.1);
+  --desktop-workspace-bg: rgba(2, 6, 23, 0.1);
+  --desktop-workspace-solid-bg: rgba(15, 23, 42, 0.4);
+  --desktop-workspace-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --desktop-window-bg: rgba(2, 6, 23, 0.55);
+  --desktop-window-solid-bg: rgba(15, 23, 42, 0.96);
+  --desktop-window-border: rgba(255, 255, 255, 0.15);
+  --desktop-window-shadow: 0 30px 90px rgba(15, 23, 42, 0.45);
+  --desktop-window-header-bg: rgba(255, 255, 255, 0.05);
+  --desktop-window-header-border: rgba(255, 255, 255, 0.1);
+  --desktop-window-ring: rgba(125, 211, 252, 0.25);
+  --desktop-card-bg: rgba(2, 6, 23, 0.35);
+  --desktop-card-solid-bg: rgba(15, 23, 42, 0.96);
+  --desktop-card-border: rgba(255, 255, 255, 0.1);
+  --desktop-card-shadow: 0 20px 60px rgba(15, 23, 42, 0.32);
+  --desktop-tooltip-bg: rgba(2, 6, 23, 0.95);
+  --desktop-tooltip-border: rgba(255, 255, 255, 0.15);
+  --desktop-tooltip-shadow: 0 12px 30px rgba(2, 6, 23, 0.4);
+  --desktop-select-bg: rgba(2, 6, 23, 0.5);
+  --desktop-select-border: rgba(255, 255, 255, 0.1);
+  --desktop-select-focus: #38bdf8;
+  --desktop-toggle-off: #334155;
+  --desktop-dock-icon-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(15, 23, 42, 0.35));
+  --desktop-dock-icon-border: rgba(255, 255, 255, 0.12);
+  --desktop-dock-icon-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 20px 30px rgba(15, 23, 42, 0.2);
+  --desktop-dock-icon-active-bg: rgba(125, 211, 252, 0.18);
+  --desktop-dock-icon-active-border: rgba(125, 211, 252, 0.45);
+  --desktop-dock-icon-active-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 16px 26px rgba(14, 165, 233, 0.18);
+  --desktop-dock-icon-foreground: #f8fafc;
+  background-color: var(--desktop-wallpaper-base);
+  color: var(--desktop-text);
+}
+
+.desktop-wallpaper[data-ui-theme="light"] {
+  --desktop-text: #0f172a;
+  --desktop-muted-text: #334155;
+  --desktop-subtle-text: #475569;
+  --desktop-wallpaper-base: #e2e8f0;
+  --desktop-ambient-1: rgba(56, 189, 248, 0.12);
+  --desktop-ambient-2: rgba(168, 85, 247, 0.1);
+  --desktop-ambient-3: rgba(59, 130, 246, 0.1);
+  --desktop-menu-bg: rgba(255, 255, 255, 0.92);
+  --desktop-menu-solid-bg: #f8fafc;
+  --desktop-menu-border: rgba(148, 163, 184, 0.35);
+  --desktop-menu-button-hover-bg: rgba(148, 163, 184, 0.18);
+  --desktop-popover-bg: rgba(255, 255, 255, 0.9);
+  --desktop-popover-solid-bg: rgba(255, 255, 255, 0.98);
+  --desktop-popover-border: rgba(148, 163, 184, 0.35);
+  --desktop-popover-shadow: 0 20px 50px rgba(100, 116, 139, 0.2);
+  --desktop-status-bg: rgba(255, 255, 255, 0.74);
+  --desktop-status-solid-bg: rgba(255, 255, 255, 0.96);
+  --desktop-status-border: rgba(148, 163, 184, 0.32);
+  --desktop-workspace-bg: rgba(255, 255, 255, 0.18);
+  --desktop-workspace-solid-bg: rgba(255, 255, 255, 0.32);
+  --desktop-workspace-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  --desktop-window-bg: #f1f5f9;
+  --desktop-window-solid-bg: #f8fafc;
+  --desktop-window-border: rgba(148, 163, 184, 0.35);
+  --desktop-window-shadow: 0 30px 80px rgba(100, 116, 139, 0.22);
+  --desktop-window-header-bg: rgba(226, 232, 240, 0.78);
+  --desktop-window-header-border: rgba(148, 163, 184, 0.35);
+  --desktop-window-ring: rgba(56, 189, 248, 0.35);
+  --desktop-card-bg: #f3f4f6;
+  --desktop-card-solid-bg: #f8fafc;
+  --desktop-card-border: rgba(148, 163, 184, 0.28);
+  --desktop-card-shadow: 0 18px 44px rgba(100, 116, 139, 0.16);
+  --desktop-tooltip-bg: rgba(255, 255, 255, 0.98);
+  --desktop-tooltip-border: rgba(148, 163, 184, 0.35);
+  --desktop-tooltip-shadow: 0 12px 28px rgba(100, 116, 139, 0.18);
+  --desktop-select-bg: rgba(255, 255, 255, 0.94);
+  --desktop-select-border: rgba(148, 163, 184, 0.35);
+  --desktop-select-focus: #0284c7;
+  --desktop-toggle-off: #cbd5e1;
+  --desktop-dock-icon-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(226, 232, 240, 0.92));
+  --desktop-dock-icon-border: rgba(148, 163, 184, 0.42);
+  --desktop-dock-icon-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 14px 24px rgba(148, 163, 184, 0.22);
+  --desktop-dock-icon-active-bg: rgba(186, 230, 253, 0.85);
+  --desktop-dock-icon-active-border: rgba(2, 132, 199, 0.4);
+  --desktop-dock-icon-active-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 22px rgba(56, 189, 248, 0.24);
+  --desktop-dock-icon-foreground: #0f172a;
+}
+
+.desktop-wallpaper[data-ui-theme="high-contrast"] {
+  --desktop-text: #ffffff;
+  --desktop-muted-text: #f8fafc;
+  --desktop-subtle-text: #e2e8f0;
+  --desktop-wallpaper-base: #000000;
+  --desktop-ambient-1: rgba(250, 204, 21, 0.16);
+  --desktop-ambient-2: rgba(34, 211, 238, 0.12);
+  --desktop-ambient-3: rgba(255, 255, 255, 0.08);
+  --desktop-menu-bg: rgba(0, 0, 0, 0.88);
+  --desktop-menu-solid-bg: #000000;
+  --desktop-menu-border: rgba(255, 255, 255, 0.75);
+  --desktop-menu-button-hover-bg: rgba(255, 255, 255, 0.2);
+  --desktop-popover-bg: rgba(0, 0, 0, 0.95);
+  --desktop-popover-solid-bg: #000000;
+  --desktop-popover-border: rgba(255, 255, 255, 0.8);
+  --desktop-popover-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 18px 40px rgba(0, 0, 0, 0.55);
+  --desktop-status-bg: rgba(0, 0, 0, 0.9);
+  --desktop-status-solid-bg: #000000;
+  --desktop-status-border: rgba(255, 255, 255, 0.75);
+  --desktop-workspace-bg: rgba(0, 0, 0, 0.36);
+  --desktop-workspace-solid-bg: rgba(0, 0, 0, 0.55);
+  --desktop-workspace-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  --desktop-window-bg: rgba(0, 0, 0, 0.92);
+  --desktop-window-solid-bg: #000000;
+  --desktop-window-border: rgba(255, 255, 255, 0.82);
+  --desktop-window-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 26px 70px rgba(0, 0, 0, 0.72);
+  --desktop-window-header-bg: rgba(15, 23, 42, 0.95);
+  --desktop-window-header-border: rgba(255, 255, 255, 0.78);
+  --desktop-window-ring: rgba(250, 204, 21, 0.75);
+  --desktop-card-bg: rgba(0, 0, 0, 0.9);
+  --desktop-card-solid-bg: #000000;
+  --desktop-card-border: rgba(255, 255, 255, 0.72);
+  --desktop-card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 18px 48px rgba(0, 0, 0, 0.68);
+  --desktop-tooltip-bg: rgba(0, 0, 0, 0.98);
+  --desktop-tooltip-border: rgba(255, 255, 255, 0.85);
+  --desktop-tooltip-shadow: 0 10px 28px rgba(0, 0, 0, 0.8);
+  --desktop-select-bg: rgba(0, 0, 0, 0.94);
+  --desktop-select-border: rgba(255, 255, 255, 0.8);
+  --desktop-select-focus: #facc15;
+  --desktop-toggle-off: #475569;
+  --desktop-dock-icon-bg: linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(0, 0, 0, 1));
+  --desktop-dock-icon-border: rgba(255, 255, 255, 0.72);
+  --desktop-dock-icon-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 28px rgba(0, 0, 0, 0.7);
+  --desktop-dock-icon-active-bg: rgba(250, 204, 21, 0.26);
+  --desktop-dock-icon-active-border: rgba(255, 255, 255, 0.82);
+  --desktop-dock-icon-active-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 0 0 1px rgba(250, 204, 21, 0.38), 0 16px 30px rgba(250, 204, 21, 0.18);
+  --desktop-dock-icon-foreground: #ffffff;
+}
+
 .desktop-wallpaper::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 20%, rgba(125, 211, 252, 0.12), transparent 22%),
-    radial-gradient(circle at 80% 16%, rgba(196, 181, 253, 0.12), transparent 18%),
-    radial-gradient(circle at 50% 85%, rgba(59, 130, 246, 0.12), transparent 28%);
+    radial-gradient(circle at 20% 20%, var(--desktop-ambient-1), transparent 22%),
+    radial-gradient(circle at 80% 16%, var(--desktop-ambient-2), transparent 18%),
+    radial-gradient(circle at 50% 85%, var(--desktop-ambient-3), transparent 28%);
   pointer-events: none;
 }
 
 .desktop-menu-bar {
-  background: rgba(2, 6, 23, 0.5);
+  z-index: 10001;
+  border-bottom: 1px solid var(--desktop-menu-border);
+  color: var(--desktop-text);
+  background: var(--desktop-menu-bg);
   backdrop-filter: blur(24px);
 }
 
 .desktop-menu-button {
   border-radius: 9999px;
-  color: rgb(226 232 240);
+  color: var(--desktop-muted-text);
   font-size: 0.8125rem;
   line-height: 1rem;
   padding: 0.35rem 0.7rem;
   transition: background-color 150ms ease, color 150ms ease;
 }
 
-.desktop-menu-button:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: white;
+.desktop-menu-button:hover,
+.desktop-menu-button-active {
+  background: var(--desktop-menu-button-hover-bg);
+  color: var(--desktop-text);
+}
+
+.desktop-popover {
+  z-index: 9999;
+  border: 1px solid var(--desktop-popover-border);
+  background: var(--desktop-popover-bg);
+  box-shadow: var(--desktop-popover-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.desktop-menu-item {
+  color: var(--desktop-muted-text);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.desktop-menu-item:hover,
+.desktop-menu-item-active {
+  background: var(--desktop-menu-button-hover-bg);
+  color: var(--desktop-text);
 }
 
 .desktop-status-chip {
   align-items: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--desktop-muted-text);
+  background: var(--desktop-status-bg);
+  border: 1px solid var(--desktop-status-border);
   border-radius: 9999px;
   display: inline-flex;
   height: 2rem;
@@ -64,6 +237,40 @@ body {
   min-width: 2rem;
   padding: 0 0.5rem;
   backdrop-filter: blur(20px);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.desktop-status-chip:hover,
+.desktop-status-chip-active {
+  background: var(--desktop-menu-button-hover-bg);
+  color: var(--desktop-text);
+}
+
+.desktop-minimized-window {
+  align-items: center;
+  color: var(--desktop-muted-text);
+  background: var(--desktop-status-bg);
+  border: 1px solid var(--desktop-status-border);
+  border-radius: 9999px;
+  display: inline-flex;
+  height: 1.9rem;
+  justify-content: center;
+  min-width: 1.9rem;
+  padding: 0 0.5rem;
+  backdrop-filter: blur(20px);
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.desktop-minimized-window:hover {
+  background: var(--desktop-menu-button-hover-bg);
+  color: var(--desktop-text);
+  transform: translateY(-1px);
+}
+
+.desktop-workspace-surface {
+  background: var(--desktop-workspace-bg);
+  box-shadow: var(--desktop-workspace-shadow);
+  backdrop-filter: blur(2px);
 }
 
 .desktop-dock {
@@ -86,14 +293,165 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(15, 23, 42, 0.35));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 20px 30px rgba(15, 23, 42, 0.2);
+  border: 1px solid var(--desktop-dock-icon-border);
+  background: var(--desktop-dock-icon-bg);
+  box-shadow: var(--desktop-dock-icon-shadow);
   transition: transform 150ms ease, background-color 150ms ease;
+}
+
+.desktop-dock-icon-active {
+  border-color: var(--desktop-dock-icon-active-border);
+  background: var(--desktop-dock-icon-active-bg);
+  box-shadow: var(--desktop-dock-icon-active-shadow);
 }
 
 .desktop-dock-icon:hover {
   transform: translateY(-2px) scale(1.04);
+}
+
+.desktop-dock-label {
+  color: var(--desktop-muted-text);
+}
+
+.desktop-window-frame {
+  border: 1px solid var(--desktop-window-border);
+  background: var(--desktop-window-bg);
+  box-shadow: var(--desktop-window-shadow);
+  backdrop-filter: blur(24px);
+}
+
+.desktop-window-focused {
+  box-shadow: var(--desktop-window-shadow), 0 0 0 1px var(--desktop-window-ring);
+}
+
+.desktop-window-header {
+  border-bottom: 1px solid var(--desktop-window-header-border);
+  background: var(--desktop-window-header-bg);
+}
+
+.desktop-window-title {
+  color: var(--desktop-text);
+}
+
+.desktop-window-subtitle {
+  color: var(--desktop-muted-text);
+}
+
+.desktop-card {
+  border: 1px solid var(--desktop-card-border);
+  background: var(--desktop-card-bg);
+  box-shadow: var(--desktop-card-shadow);
+  backdrop-filter: blur(20px);
+}
+
+.desktop-card-title {
+  color: var(--desktop-text);
+}
+
+.desktop-card-description,
+.desktop-subtle-text {
+  color: var(--desktop-subtle-text);
+}
+
+.desktop-tooltip {
+  border: 1px solid var(--desktop-tooltip-border);
+  color: var(--desktop-text);
+  background: var(--desktop-tooltip-bg);
+  box-shadow: var(--desktop-tooltip-shadow);
+}
+
+.desktop-select {
+  border: 1px solid var(--desktop-select-border);
+  color: var(--desktop-text);
+  background: var(--desktop-select-bg);
+}
+
+.desktop-select:focus {
+  border-color: var(--desktop-select-focus);
+}
+
+.desktop-form-label {
+  color: var(--desktop-text);
+}
+
+.desktop-toggle-off {
+  background: var(--desktop-toggle-off);
+}
+
+.desktop-button-outline {
+  border-color: var(--desktop-card-border);
+  color: var(--desktop-text);
+  background: var(--desktop-status-bg);
+}
+
+.desktop-button-outline:hover {
+  background: var(--desktop-menu-button-hover-bg);
+}
+
+.desktop-button-ghost {
+  color: var(--desktop-muted-text);
+}
+
+.desktop-button-ghost:hover {
+  color: var(--desktop-text);
+  background: var(--desktop-menu-button-hover-bg);
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-menu-bar,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-popover,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-status-chip,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-window-frame,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-card,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-button-outline,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-workspace-surface {
+  backdrop-filter: none;
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-menu-bar {
+  background: var(--desktop-menu-solid-bg);
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-popover {
+  background: var(--desktop-popover-solid-bg);
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-status-chip {
+  background: var(--desktop-status-solid-bg);
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-window-frame {
+  background: var(--desktop-window-solid-bg);
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-card,
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-button-outline {
+  background: var(--desktop-card-solid-bg);
+}
+
+.desktop-wallpaper[data-reduce-transparency="true"] .desktop-workspace-surface {
+  background: var(--desktop-workspace-solid-bg);
+}
+
+.desktop-wallpaper[data-ui-theme="high-contrast"]::before {
+  opacity: 0.7;
+}
+
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-white"],
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-slate-50"],
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-slate-100"],
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-slate-200"],
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-slate-300"] {
+  color: #0f172a !important;
+}
+
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-slate-400"],
+.desktop-wallpaper[data-ui-theme="light"] .desktop-window-frame [class*="text-slate-500"] {
+  color: #475569 !important;
+}
+
+.desktop-wallpaper[data-ui-theme="high-contrast"] .desktop-window-frame [class*="text-slate-400"],
+.desktop-wallpaper[data-ui-theme="high-contrast"] .desktop-window-frame [class*="text-slate-500"] {
+  color: #e2e8f0 !important;
 }
 
 ::-webkit-scrollbar {

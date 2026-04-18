@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { aiProviderCatalog, aiProviderOrder, type AiProviderFormMap } from "@/lib/ai/provider-config";
+import { aiProviderCatalog, aiProviderOrder, type AiProviderFormMap, type UserAiSettingsPayload } from "@/lib/ai/provider-config";
 import { prisma } from "@/lib/prisma";
 import { decryptJson, encryptJson } from "@/lib/security/secrets";
 import type { PluginProviderId } from "@/lib/plugins/protocol";
@@ -25,6 +25,11 @@ const aiSettingsSchema = z.object({
   copilot: providerSettingSchema,
   gemini: providerSettingSchema,
   mistral: providerSettingSchema
+});
+const defaultProviderSchema = z.enum(aiProviderOrder);
+const userAiSettingsSchema = z.object({
+  defaultProvider: defaultProviderSchema.default("copilot"),
+  providers: aiSettingsSchema
 });
 
 const legacyCopilotKeys: string[] = ["AI_COPILOT_ENDPOINT", "AI_COPILOT_MODEL", "AI_COPILOT_API_KEY"];
@@ -61,7 +66,19 @@ async function loadLegacyAdminCopilotSettings() {
   };
 }
 
-export async function loadUserAiSettings(userId: string, role: AppRole): Promise<AiProviderFormMap> {
+function normalizeDefaultProvider(provider: string | null | undefined): PluginProviderId {
+  return defaultProviderSchema.safeParse(provider).success ? (provider as PluginProviderId) : "copilot";
+}
+
+export async function loadUserAiSettings(userId: string, role: AppRole): Promise<UserAiSettingsPayload> {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId
+    },
+    select: {
+      defaultAiProvider: true
+    }
+  });
   const storedSettings = await prisma.userAiProviderSetting.findMany({
     where: {
       userId
@@ -71,7 +88,7 @@ export async function loadUserAiSettings(userId: string, role: AppRole): Promise
   const byProvider = new Map(storedSettings.map((setting) => [setting.provider, setting]));
   const legacyCopilotSettings = role === "ADMIN" ? await loadLegacyAdminCopilotSettings() : null;
 
-  return aiProviderOrder.reduce<AiProviderFormMap>((settings, provider) => {
+  const providers = aiProviderOrder.reduce<AiProviderFormMap>((settings, provider) => {
     const storedSetting = byProvider.get(provider);
 
     if (storedSetting) {
@@ -109,10 +126,15 @@ export async function loadUserAiSettings(userId: string, role: AppRole): Promise
     };
     return settings;
   }, {} as AiProviderFormMap);
+
+  return {
+    defaultProvider: normalizeDefaultProvider(user?.defaultAiProvider),
+    providers
+  };
 }
 
 export async function updateUserAiSettings(values: unknown, userId: string, role: AppRole) {
-  const parsed = aiSettingsSchema.safeParse(values);
+  const parsed = userAiSettingsSchema.safeParse(values);
 
   if (!parsed.success) {
     return {
@@ -122,8 +144,17 @@ export async function updateUserAiSettings(values: unknown, userId: string, role
   }
 
   await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: {
+        id: userId
+      },
+      data: {
+        defaultAiProvider: parsed.data.defaultProvider
+      }
+    });
+
     for (const provider of aiProviderOrder) {
-      const config = parsed.data[provider];
+      const config = parsed.data.providers[provider];
 
       await tx.userAiProviderSetting.upsert({
         where: {
@@ -158,7 +189,7 @@ export async function updateUserAiSettings(values: unknown, userId: string, role
 
   return {
     ok: true as const,
-    providers: await loadUserAiSettings(userId, role)
+    ...(await loadUserAiSettings(userId, role))
   };
 }
 
@@ -168,7 +199,7 @@ export async function getUserAiProviderConfig(
   role: AppRole
 ): Promise<ProviderConfig> {
   const settings = await loadUserAiSettings(userId, role);
-  const config = settings[provider];
+  const config = settings.providers[provider];
   const defaults = aiProviderCatalog[provider];
 
   return {
@@ -177,4 +208,9 @@ export async function getUserAiProviderConfig(
     apiKey: config.apiKey,
     headers: defaults.headers
   };
+}
+
+export async function getDefaultUserAiProvider(userId: string, role: AppRole): Promise<PluginProviderId> {
+  const settings = await loadUserAiSettings(userId, role);
+  return settings.defaultProvider;
 }

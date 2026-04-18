@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
     return auth.response;
   }
 
-  const providers = await loadUserAiSettings(auth.user.sub, auth.user.role);
+  const settings = await loadUserAiSettings(auth.user.sub, auth.user.role);
 
-  return NextResponse.json({ providers });
+  return NextResponse.json(settings);
 }
 
 export async function PATCH(request: NextRequest) {
@@ -26,15 +26,15 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json().catch(() => null);
 
-  if (!body || typeof body !== "object" || !("providers" in body)) {
+  if (!body || typeof body !== "object" || !("providers" in body) || !("defaultProvider" in body)) {
     return NextResponse.json({ error: "Invalid AI settings payload." }, { status: 400 });
   }
 
-  const result = await updateUserAiSettings((body as { providers: unknown }).providers, auth.user.sub, auth.user.role);
+  const result = await updateUserAiSettings(body, auth.user.sub, auth.user.role);
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  return NextResponse.json({ providers: result.providers });
+  return NextResponse.json(result);
 }

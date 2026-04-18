@@ -21,12 +21,12 @@ export function HoverHelperLabel({
 }: HoverHelperLabelProps) {
   return (
     <div className={cn("group/helper relative inline-flex max-w-full align-top", wrapperClassName)}>
-      <div
-        className={cn(
-          "pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-max max-w-md rounded-md border border-white/15 bg-slate-950/95 px-2 py-1 text-xs leading-tight text-slate-200 opacity-0 shadow-lg shadow-slate-950/40 transition-opacity duration-150 group-hover/helper:opacity-100",
-          tooltipClassName
-        )}
-      >
+        <div
+          className={cn(
+            "desktop-tooltip pointer-events-none absolute left-0 top-full z-10 mt-2 w-max max-w-md rounded-md px-2 py-1 text-xs leading-tight opacity-0 transition-opacity duration-150 group-hover/helper:opacity-100",
+            tooltipClassName
+          )}
+        >
         {helper}
       </div>
       <Component className={cn("cursor-default", labelClassName)}>{label}</Component>

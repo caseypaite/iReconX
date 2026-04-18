@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   applyStudioFilters,
-  buildSourceCatalogDataset,
   buildStudioPivot,
   buildStudioSummary,
   type AccessibleStudioSource,
@@ -19,7 +18,13 @@ import { Card } from "@/components/ui/card";
 import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
 import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
+import { getSourceDataDictionaryPreview, hasSourceDataDictionary } from "@/lib/data-dictionary";
 import { useStudioWorkspaceStore } from "@/lib/stores/studio-workspace";
+import {
+  fetchAccessibleStudioSources,
+  getImportedDatasetMessage,
+  loadWorkspaceDatasetFromSources
+} from "@/lib/studio-workspace-loader";
 
 type SummaryConfig = {
   groupBy: string;
@@ -73,30 +78,115 @@ function DataTable({
     );
   }
 
+  const numericColumns = new Set(
+    columns.filter(
+      (column) =>
+        rows.some((row) => typeof row[column] === "number") &&
+        rows.every((row) => row[column] === null || typeof row[column] === "number")
+    )
+  );
+
+  function formatCellValue(value: string | number | boolean | null) {
+    if (typeof value === "number") {
+      return Number(value.toFixed(2)).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    return String(value);
+  }
+
+  const numericColumnWidths = new Map(
+    columns.map((column) => {
+      if (!numericColumns.has(column)) {
+        return [column, null] as const;
+      }
+
+      const longestValueLength = rows.reduce((maxLength, row) => {
+        const formattedValue = formatCellValue(row[column]);
+        return Math.max(maxLength, formattedValue?.length ?? 1);
+      }, 1);
+
+      return [column, Math.max(7, longestValueLength + 1)] as const;
+    })
+  );
+
   return (
     <div className="overflow-x-auto rounded-none border border-white/10">
-      <table className="min-w-max w-full table-fixed divide-y divide-white/10 text-[11px] leading-tight text-slate-200">
+      <table className="w-max min-w-full divide-y divide-white/10 text-[10px] leading-tight text-slate-200">
         <thead className="bg-white/5">
           <tr>
-            {columns.map((column) => (
-              <th key={column} className="px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                <span className="block max-w-[96px] truncate" title={column}>
-                  {column}
-                </span>
-              </th>
-            ))}
+            {columns.map((column) => {
+              const isNumericColumn = numericColumns.has(column);
+              const numericColumnWidth = numericColumnWidths.get(column);
+
+              return (
+                <th
+                  key={column}
+                  className={`px-1 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-400 ${
+                    isNumericColumn ? "text-right" : "w-[88px] max-w-[88px] text-left"
+                  }`}
+                  style={
+                    isNumericColumn && numericColumnWidth
+                      ? {
+                          width: `${numericColumnWidth}ch`,
+                          minWidth: `${numericColumnWidth}ch`
+                        }
+                      : undefined
+                  }
+                >
+                  <span
+                    className={`block overflow-hidden ${
+                      isNumericColumn ? "whitespace-nowrap" : "line-clamp-2 break-words text-balance"
+                    }`}
+                    title={column}
+                  >
+                    {column}
+                  </span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {rows.map((row, index) => (
             <tr key={`${index}-${String(row[columns[0]] ?? "row")}`} className="bg-slate-950/20">
-              {columns.map((column) => (
-                <td key={column} className="px-1.5 py-1 align-top text-slate-200">
-                  <span className="block max-w-[96px] truncate" title={row[column] === null ? "" : String(row[column])}>
-                    {row[column] === null ? <span className="text-slate-500">-</span> : String(row[column])}
-                  </span>
-                </td>
-              ))}
+              {columns.map((column) => {
+                const formattedValue = formatCellValue(row[column]);
+                const isNumericColumn = numericColumns.has(column);
+                const numericColumnWidth = numericColumnWidths.get(column);
+
+                return (
+                  <td
+                    key={column}
+                    className={`px-1 py-1 align-top text-slate-200 ${
+                      isNumericColumn ? "text-right" : "w-[88px] max-w-[88px]"
+                    }`}
+                    style={
+                      isNumericColumn && numericColumnWidth
+                        ? {
+                            width: `${numericColumnWidth}ch`,
+                            minWidth: `${numericColumnWidth}ch`
+                          }
+                        : undefined
+                    }
+                  >
+                    <span
+                      className={`block overflow-hidden text-[10px] leading-tight ${
+                        isNumericColumn ? "whitespace-nowrap font-mono tabular-nums" : "line-clamp-3 break-words"
+                      }`}
+                      title={formattedValue ?? ""}
+                    >
+                      {formattedValue === null ? <span className="text-slate-500">-</span> : formattedValue}
+                    </span>
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -105,7 +195,13 @@ function DataTable({
   );
 }
 
-export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: () => void }) {
+export function DataStudioWindow({
+  onOpenImportWizard,
+  onOpenDataDictionaryWindow
+}: {
+  onOpenImportWizard?: () => void;
+  onOpenDataDictionaryWindow?: () => void;
+}) {
   const setWorkspaceDataset = useStudioWorkspaceStore((state) => state.setDataset);
   const sharedDataset = useStudioWorkspaceStore((state) => state.dataset);
   const lastUpdatedBy = useStudioWorkspaceStore((state) => state.lastUpdatedBy);
@@ -125,7 +221,7 @@ export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: 
     valueField: ""
   });
   const [activePanel, setActivePanel] = useState<StudioWorkspacePanel>("summary");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loadingSources, setLoadingSources] = useState(true);
   const [refreshingSources, setRefreshingSources] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,17 +265,7 @@ export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: 
     setError(null);
 
     try {
-      const response = await fetch("/api/explorer/data-studio", {
-        method: "GET",
-        credentials: "include"
-      });
-      const body = (await response.json().catch(() => null)) as { error?: string; sources?: AccessibleStudioSource[] } | null;
-
-      if (!response.ok) {
-        throw new Error(body?.error ?? "Unable to load governed data sources.");
-      }
-
-      setSources(body?.sources ?? []);
+      setSources(await fetchAccessibleStudioSources());
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to load governed data sources.");
     } finally {
@@ -200,9 +286,7 @@ export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: 
       setActivePanel("summary");
       setImportMessage(
         lastUpdatedBy === "import-wizard"
-          ? sharedDataset.metadata?.importedPermanently
-            ? "Latest upload loaded into the studio and copied into the persistent import store."
-            : "Latest upload loaded into the temporary analysis workspace."
+          ? getImportedDatasetMessage(sharedDataset)
           : null
       );
     }
@@ -238,24 +322,17 @@ export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: 
     setPivotDirty(true);
   }, [dataset, filters, pivotConfig]);
 
-  function loadSelectedSourcesDataset() {
-    const scopedSources =
-      selectedSourceIds.length > 0
-        ? sources.filter((source) => selectedSourceIds.includes(source.id))
-        : sources;
-
-    if (scopedSources.length === 0) {
-      setError("Select at least one data source or upload a file.");
-      return;
+  async function loadSelectedSourcesDataset() {
+    try {
+      const result = await loadWorkspaceDatasetFromSources(sources, selectedSourceIds);
+      setDataset(result.dataset);
+      setWorkspaceDataset(result.dataset, "data-studio");
+      resetTransforms(result.dataset);
+      setImportMessage(result.message);
+      setError(null);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to load the selected dataset.");
     }
-
-    const nextDataset = buildSourceCatalogDataset(scopedSources, scopedSources.length === 1 ? scopedSources[0].name : "Selected governed data sources");
-    setDataset(nextDataset);
-    setWorkspaceDataset(nextDataset, "data-studio");
-    resetTransforms(nextDataset);
-    setImportMessage(null);
-    setError(null);
-    setSidebarOpen(false);
   }
 
   function runSummary() {
@@ -326,21 +403,28 @@ export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: 
             <div className="flex items-center justify-between gap-3">
               <div>
                 <HoverSubtitleTitle
-                  subtitle="Load accessible data sources as a metadata dataset inside the studio."
+                  subtitle="Load governed data sources and persistent imported tables as a metadata dataset inside the studio."
                   title="Governed sources"
                 />
               </div>
-              <Button className={compactButtonClassName} onClick={() => void loadSources()} type="button" variant="ghost">
-                <RefreshCw className={`mr-2 h-4 w-4 ${refreshingSources ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
+              <div className="flex items-center gap-2">
+                {onOpenDataDictionaryWindow ? (
+                  <Button className={compactButtonClassName} onClick={onOpenDataDictionaryWindow} type="button" variant="outline">
+                    Data dictionaries
+                  </Button>
+                ) : null}
+                <Button className={compactButtonClassName} onClick={() => void loadSources()} type="button" variant="ghost">
+                  <RefreshCw className={`mr-2 h-4 w-4 ${refreshingSources ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+              </div>
             </div>
             <div className="mt-2 space-y-2">
               {loadingSources ? (
                 <p className="text-xs text-slate-400">Loading data sources…</p>
               ) : sources.length === 0 ? (
                 <p className="rounded-none border border-dashed border-white/10 bg-slate-950/20 px-3 py-4 text-xs text-slate-400">
-                  No governed data sources are available for this account yet.
+                  No governed data sources or persistent imported tables are available for this account yet.
                 </p>
               ) : (
                 <div className="max-h-64 space-y-1 overflow-auto pr-1">
@@ -348,45 +432,59 @@ export function DataStudioWindow({ onOpenImportWizard }: { onOpenImportWizard?: 
                     const checked = selectedSourceIds.includes(source.id);
 
                     return (
-                      <label
-                        key={source.id}
-                        className="flex cursor-pointer items-start gap-2 border border-white/10 bg-slate-950/25 px-2 py-2"
-                      >
-                        <input
-                          checked={checked}
-                          className="mt-0.5 h-3.5 w-3.5 border-white/20 bg-slate-950/50"
-                          onChange={(event) =>
-                            setSelectedSourceIds((current) =>
-                              event.target.checked
-                                ? [...current, source.id]
-                                : current.filter((sourceId) => sourceId !== source.id)
-                            )
-                          }
-                          type="checkbox"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <DatabaseZap className="h-3.5 w-3.5 text-sky-300" />
-                            <HoverHelperLabel
-                              helper={
-                                <>
-                                  <div>{`${source.type} · ${source.owner}`}</div>
-                                  <div>{source.description || "No description provided."}</div>
-                                </>
-                              }
-                              label={source.name}
-                              labelClassName="truncate text-xs font-medium text-white"
-                              tooltipClassName="text-[10px]"
-                              wrapperClassName="max-w-full"
-                            />
-                          </div>
-                        </div>
-                      </label>
+                      <label key={source.id} className="flex cursor-pointer items-start gap-2 border border-white/10 bg-slate-950/25 px-2 py-2">
+                          <input
+                            checked={checked}
+                            className="mt-0.5 h-3.5 w-3.5 border-white/20 bg-slate-950/50"
+                            onChange={(event) =>
+                              setSelectedSourceIds((current) =>
+                                event.target.checked
+                                  ? [...current, source.id]
+                                  : current.filter((sourceId) => sourceId !== source.id)
+                              )
+                            }
+                            type="checkbox"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              {source.sourceKind === "persistent-import" ? (
+                                <Table2 className="h-3.5 w-3.5 text-emerald-300" />
+                              ) : (
+                                <DatabaseZap className="h-3.5 w-3.5 text-sky-300" />
+                              )}
+                              <HoverHelperLabel
+                                helper={
+                                  <>
+                                    <div>{`${source.type} · ${source.owner}`}</div>
+                                    {source.tableName ? <div>{`Table: ${source.tableName}`}</div> : null}
+                                    {source.rowCount !== null && source.columnCount !== null
+                                      ? <div>{`${source.rowCount} rows · ${source.columnCount} columns`}</div>
+                                      : null}
+                                    <div>{source.description || "No description provided."}</div>
+                                    <div>{hasSourceDataDictionary(source.dataDictionary) ? "Data dictionary available." : "No data dictionary defined yet."}</div>
+                                  </>
+                                }
+                                label={source.name}
+                                labelClassName="truncate text-xs font-medium text-white"
+                                tooltipClassName="text-[10px]"
+                                wrapperClassName="max-w-full"
+                              />
+                            </div>
+                            {source.tableName ? (
+                              <p className="mt-1 truncate text-[10px] text-slate-500">{source.tableName}</p>
+                            ) : null}
+                              <p className={`mt-1 text-[10px] ${hasSourceDataDictionary(source.dataDictionary) ? "text-emerald-300" : "text-slate-500"}`}>
+                                {hasSourceDataDictionary(source.dataDictionary)
+                                  ? `Dictionary: ${getSourceDataDictionaryPreview(source.dataDictionary).slice(0, 120)}${getSourceDataDictionaryPreview(source.dataDictionary).length > 120 ? "…" : ""}`
+                                  : "No data dictionary defined."}
+                              </p>
+                            </div>
+                        </label>
                     );
                   })}
                 </div>
               )}
-              <Button className={`w-full ${compactButtonClassName}`} onClick={loadSelectedSourcesDataset} type="button">
+              <Button className={`w-full ${compactButtonClassName}`} onClick={() => void loadSelectedSourcesDataset()} type="button">
                 <DatabaseZap className="mr-2 h-4 w-4" />
                 Load selected sources
               </Button>

@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bell,
+  BookText,
   Calculator,
   DatabaseZap,
   FileText,
@@ -34,6 +36,7 @@ import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { UserProfileWindow } from "@/components/desktop/user-profile-window";
 import { DesktopWindow, type DesktopWindowFrame } from "@/components/desktop/desktop-window";
 import { DataImportWindow } from "@/components/desktop/data-import-window";
+import { DataDictionaryWindow } from "@/components/desktop/data-dictionary-window";
 import { DataStudioWindow } from "@/components/desktop/data-studio-window";
 import { TransformPipelineWindow } from "@/components/desktop/transform-pipeline-window";
 import { QueryBuilderCard } from "@/components/dashboard/query-builder";
@@ -63,6 +66,7 @@ type WindowKind =
   | "stopwatch"
   | "text-tools"
   | "data-studio"
+  | "data-dictionary"
   | "data-import"
   | "transform-studio"
   | "profile"
@@ -119,6 +123,7 @@ const windowKinds: readonly WindowKind[] = [
   "stopwatch",
   "text-tools",
   "data-studio",
+  "data-dictionary",
   "data-import",
   "transform-studio",
   "profile",
@@ -143,6 +148,23 @@ function isDesktopWindowFrame(value: unknown): value is DesktopWindowFrame {
 
 function getLayoutStorageKey(userEmail: string, role: AppRole, pathname: string) {
   return `glassui.desktop-layout:${role}:${userEmail}:${pathname}`;
+}
+
+function readLocalStorageItem(key: string) {
+  try {
+    return window.localStorage.getItem(key);
+  } catch (error) {
+    console.warn(`Unable to read local storage key "${key}".`, error);
+    return null;
+  }
+}
+
+function writeLocalStorageItem(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn(`Unable to write local storage key "${key}".`, error);
+  }
 }
 
 function restoreWindows(rawLayout: string | null, routeDescriptor: RouteDescriptor): ManagedWindow[] {
@@ -378,6 +400,54 @@ function AboutStudioWindow({ siteName }: { siteName: string }) {
   );
 }
 
+function getWindowIcon(windowItem: ManagedWindow, routeDescriptor: RouteDescriptor) {
+  if (windowItem.kind === "route") {
+    if (routeDescriptor.slug === "explorer" || routeDescriptor.slug === "data-sources") {
+      return DatabaseZap;
+    }
+
+    if (routeDescriptor.slug === "visualizations") {
+      return BarChart3;
+    }
+
+    return Monitor;
+  }
+
+  if (windowItem.kind === "sql-explorer" || windowItem.kind === "data-studio") {
+    return DatabaseZap;
+  }
+
+  if (windowItem.kind === "data-dictionary") {
+    return BookText;
+  }
+
+  if (windowItem.kind === "visualization-lab" || windowItem.kind === "transform-studio") {
+    return BarChart3;
+  }
+
+  if (windowItem.kind === "about") {
+    return Info;
+  }
+
+  if (windowItem.kind === "notepad" || windowItem.kind === "data-import") {
+    return FileText;
+  }
+
+  if (windowItem.kind === "calculator") {
+    return Calculator;
+  }
+
+  if (windowItem.kind === "stopwatch") {
+    return TimerReset;
+  }
+
+  if (windowItem.kind === "text-tools") {
+    return Type;
+  }
+
+  return Monitor;
+}
+
 export function OsShell({
   title,
   subtitle,
@@ -434,7 +504,7 @@ export function OsShell({
     const interval = window.setInterval(() => setNow(new Date()), 1000 * 30);
 
     try {
-      const stored = window.localStorage.getItem("ireconx:ui-prefs");
+      const stored = readLocalStorageItem("ireconx:ui-prefs");
       if (stored) {
         setUiPrefs((prev) => ({ ...prev, ...(JSON.parse(stored) as Partial<UiPrefs>) }));
       }
@@ -459,7 +529,7 @@ export function OsShell({
       return;
     }
 
-    const restoredWindows = restoreWindows(window.localStorage.getItem(layoutStorageKey), routeDescriptor);
+    const restoredWindows = restoreWindows(readLocalStorageItem(layoutStorageKey), routeDescriptor);
     zCounter.current = restoredWindows.reduce((highest, windowItem) => Math.max(highest, windowItem.zIndex), 3) + 1;
     setWindows(restoredWindows);
     setLayoutReady(true);
@@ -470,7 +540,7 @@ export function OsShell({
       return;
     }
 
-    window.localStorage.setItem(layoutStorageKey, JSON.stringify(windows));
+    writeLocalStorageItem(layoutStorageKey, JSON.stringify(windows));
   }, [layoutReady, layoutStorageKey, mounted, windows]);
 
   useEffect(() => {
@@ -478,7 +548,7 @@ export function OsShell({
       return;
     }
 
-    window.localStorage.setItem("ireconx:ui-prefs", JSON.stringify(uiPrefs));
+    writeLocalStorageItem("ireconx:ui-prefs", JSON.stringify(uiPrefs));
   }, [mounted, uiPrefs]);
 
   const activeWindow = useMemo(
@@ -568,6 +638,13 @@ export function OsShell({
         title: "Data Studio",
         subtitle: "Governed sources, uploads, pivoting, and summarization.",
         frame: { x: 48, y: 36, width: 1100, height: 680 }
+      },
+      "data-dictionary": {
+        id: "window:data-dictionary",
+        kind: "data-dictionary",
+        title: "Data Dictionaries",
+        subtitle: "Source-level dictionary management for AI-aware data work.",
+        frame: { x: 96, y: 56, width: 1040, height: 700 }
       },
       "data-import": {
         id: "window:data-import",
@@ -719,30 +796,108 @@ export function OsShell({
   }
 
   const contextMenus = buildContextMenus(activeWindow?.kind ?? "route", role, pathname, siteName);
+  const minimizedWindows = useMemo(
+    () => [...windows].filter((windowItem) => windowItem.minimized).sort((left, right) => left.zIndex - right.zIndex),
+    [windows]
+  );
   const hasOpenUtility = utilityApps.some((app) => windows.some((windowItem) => windowItem.kind === app.kind && !windowItem.minimized));
   const hasOpenAdminWindow =
     role === "ADMIN" &&
     windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized);
   const hasOpenDataStudio = windows.some((windowItem) => windowItem.kind === "data-studio" && !windowItem.minimized);
+  const hasOpenDataDictionary = windows.some((windowItem) => windowItem.kind === "data-dictionary" && !windowItem.minimized);
   const hasOpenTransformStudio = windows.some((windowItem) => windowItem.kind === "transform-studio" && !windowItem.minimized);
+
+  function launchConnectedWindow(menuLabel: string) {
+    switch (menuLabel) {
+      case "Query":
+        openWindow("sql-explorer");
+        return;
+      case "Visualize":
+      case "Chart":
+      case "Palette":
+      case "Inspect":
+        openWindow("visualization-lab");
+        return;
+      case "File":
+      case "Users":
+        if (activeWindow?.kind === "notepad") {
+          openWindow("notepad");
+          return;
+        }
+
+        openRouteWindow();
+        return;
+      case "Import":
+        openWindow("data-import");
+        return;
+      case "Version":
+      case "Support":
+        openWindow("about");
+        return;
+      case "Edit":
+        if (activeWindow?.kind === "calculator") {
+          openWindow("calculator");
+          return;
+        }
+
+        if (activeWindow?.kind === "text-tools") {
+          openWindow("text-tools");
+          return;
+        }
+
+        openWindow("notepad");
+        return;
+      case "Format":
+        openWindow("notepad");
+        return;
+      case "Calculate":
+      case "Memory":
+        openWindow("calculator");
+        return;
+      case "Timer":
+      case "Lap":
+        openWindow("stopwatch");
+        return;
+      case "Text":
+      case "Convert":
+      case "Metrics":
+        openWindow("text-tools");
+        return;
+      case "Window":
+        if (activeWindow) {
+          bringToFront(activeWindow.id);
+          return;
+        }
+
+        openRouteWindow();
+        return;
+      default:
+        openRouteWindow();
+    }
+  }
 
   return (
     <div
-      className="desktop-wallpaper relative min-h-screen overflow-hidden text-slate-100"
-      data-reduce-transparency={uiPrefs.reduceTransparency || undefined}
+      className="desktop-wallpaper relative min-h-screen overflow-hidden"
+      data-reduce-transparency={uiPrefs.reduceTransparency ? "true" : "false"}
+      data-ui-theme={uiPrefs.theme}
     >
       <div
         className="absolute inset-0"
         style={uiPrefs.gradient !== "none" ? { background: gradientStyles[uiPrefs.gradient] } : undefined}
       />
 
-      <header className="desktop-menu-bar fixed inset-x-0 top-0 z-50 flex h-11 items-center justify-between border-b border-white/10 px-4">
-        <div className="flex items-center gap-1">
+      <header
+        className="desktop-menu-bar fixed inset-x-0 top-0 flex h-11 items-center justify-between px-4"
+        style={{ zoom: uiPrefs.menuBarScale / 100 }}
+      >
+        <div className="flex min-w-0 items-center gap-1">
           <div className="relative" ref={glassMenuRef}>
             <button
               className={cn(
-                "desktop-menu-button flex items-center gap-2 font-semibold text-white",
-                (glassMenuOpen || windows.some((w) => w.kind === "about" && !w.minimized)) && "bg-white/10 text-white"
+                "desktop-menu-button flex items-center gap-2 font-semibold",
+                (glassMenuOpen || windows.some((w) => w.kind === "about" && !w.minimized)) && "desktop-menu-button-active"
               )}
               onClick={() => setGlassMenuOpen((current) => !current)}
               type="button"
@@ -751,11 +906,11 @@ export function OsShell({
               {siteName}
             </button>
             {glassMenuOpen ? (
-              <div className="absolute left-0 top-full mt-2 min-w-44 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+              <div className="desktop-popover absolute left-0 top-full mt-2 min-w-44 rounded-[14px] p-2">
                 <button
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
-                    windows.some((w) => w.kind === "about" && !w.minimized) && "bg-sky-400/15 text-white"
+                    "desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm",
+                    windows.some((w) => w.kind === "about" && !w.minimized) && "desktop-menu-item-active"
                   )}
                   onClick={() => {
                     openWindow("about");
@@ -775,7 +930,7 @@ export function OsShell({
                 <button
                   className={cn(
                     "desktop-menu-button",
-                    (dataMenuOpen || hasOpenDataStudio || hasOpenTransformStudio) && "bg-white/10 text-white"
+                    (dataMenuOpen || hasOpenDataStudio || hasOpenDataDictionary || hasOpenTransformStudio) && "desktop-menu-button-active"
                   )}
                   onClick={() => setDataMenuOpen((current) => !current)}
                   type="button"
@@ -783,11 +938,26 @@ export function OsShell({
                   Data
                 </button>
                 {dataMenuOpen ? (
-                  <div className="absolute left-0 top-full mt-2 min-w-56 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+                  <div className="desktop-popover absolute left-0 top-full mt-2 min-w-56 rounded-[14px] p-2">
                     <button
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
-                        hasOpenDataStudio && "bg-sky-400/15 text-white"
+                        "desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm",
+                        hasOpenDataDictionary && "desktop-menu-item-active"
+                      )}
+                      onClick={() => {
+                        openWindow("data-dictionary");
+                        setDataMenuOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <BookText className="h-4 w-4" />
+                      <span className="flex-1">Data Dictionary Manager</span>
+                    </button>
+                    <div className="my-1 border-t border-white/10" />
+                    <button
+                      className={cn(
+                        "desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm",
+                        hasOpenDataStudio && "desktop-menu-item-active"
                       )}
                       onClick={() => {
                         openWindow("data-studio");
@@ -800,8 +970,8 @@ export function OsShell({
                     </button>
                     <button
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
-                        hasOpenTransformStudio && "bg-sky-400/15 text-white"
+                        "desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm",
+                        hasOpenTransformStudio && "desktop-menu-item-active"
                       )}
                       onClick={() => {
                         openWindow("transform-studio");
@@ -818,16 +988,16 @@ export function OsShell({
             ) : item === "View" ? (
               <div key="View" className="relative" ref={viewMenuRef}>
                 <button
-                  className={cn("desktop-menu-button", viewMenuOpen && "bg-white/10 text-white")}
+                  className={cn("desktop-menu-button", viewMenuOpen && "desktop-menu-button-active")}
                   onClick={() => setViewMenuOpen((current) => !current)}
                   type="button"
                 >
                   View
                 </button>
                 {viewMenuOpen ? (
-                  <div className="absolute left-0 top-full mt-2 min-w-52 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+                  <div className="desktop-popover absolute left-0 top-full mt-2 min-w-52 rounded-[14px] p-2">
                     <button
-                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+                      className="desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm"
                       onClick={() => {
                         cascadeWindows();
                         setViewMenuOpen(false);
@@ -837,7 +1007,7 @@ export function OsShell({
                       Cascade Windows
                     </button>
                     <button
-                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+                      className="desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm"
                       onClick={() => {
                         tileWindows();
                         setViewMenuOpen(false);
@@ -847,7 +1017,7 @@ export function OsShell({
                       Tile Windows
                     </button>
                     <button
-                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+                      className="desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm"
                       onClick={() => {
                         minimizeAll();
                         setViewMenuOpen(false);
@@ -857,7 +1027,7 @@ export function OsShell({
                       Minimize All
                     </button>
                     <button
-                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+                      className="desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm"
                       onClick={() => {
                         setUiPrefs((current) => ({ ...current, showDock: !current.showDock }));
                         setViewMenuOpen(false);
@@ -868,7 +1038,7 @@ export function OsShell({
                     </button>
                     <div className="my-1 border-t border-white/10" />
                     <button
-                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white"
+                      className="desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm"
                       onClick={() => {
                         openWindow("options");
                         setViewMenuOpen(false);
@@ -881,21 +1051,26 @@ export function OsShell({
                 ) : null}
               </div>
             ) : (
-              <button key={item} className="desktop-menu-button" type="button">
+              <button
+                key={item}
+                className="desktop-menu-button"
+                onClick={() => launchConnectedWindow(item)}
+                type="button"
+              >
                 {item}
               </button>
             )
           )}
           <div className="relative" ref={utilityMenuRef}>
             <button
-              className={cn("desktop-menu-button", (utilityMenuOpen || hasOpenUtility) && "bg-white/10 text-white")}
+              className={cn("desktop-menu-button", (utilityMenuOpen || hasOpenUtility) && "desktop-menu-button-active")}
               onClick={() => setUtilityMenuOpen((current) => !current)}
               type="button"
             >
               Utilities
             </button>
             {utilityMenuOpen ? (
-              <div className="absolute left-0 top-full mt-2 min-w-52 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+              <div className="desktop-popover absolute left-0 top-full mt-2 min-w-52 rounded-[14px] p-2">
                 {utilityApps.map((app) => {
                   const isOpen = windows.some((windowItem) => windowItem.kind === app.kind && !windowItem.minimized);
 
@@ -903,8 +1078,8 @@ export function OsShell({
                     <button
                       key={app.id}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
-                        isOpen && "bg-sky-400/15 text-white"
+                        "desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm",
+                        isOpen && "desktop-menu-item-active"
                       )}
                       onClick={() => {
                         openWindow(app.kind);
@@ -923,18 +1098,18 @@ export function OsShell({
           {role === "ADMIN" ? (
             <div className="relative" ref={adminMenuRef}>
               <button
-                className={cn("desktop-menu-button", (adminMenuOpen || hasOpenAdminWindow) && "bg-white/10 text-white")}
+                className={cn("desktop-menu-button", (adminMenuOpen || hasOpenAdminWindow) && "desktop-menu-button-active")}
                 onClick={() => setAdminMenuOpen((current) => !current)}
                 type="button"
               >
                 Admin
               </button>
               {adminMenuOpen ? (
-                <div className="absolute left-0 top-full mt-2 min-w-56 rounded-[14px] border border-white/10 bg-slate-950/85 p-2 shadow-[0_20px_50px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+                <div className="desktop-popover absolute left-0 top-full mt-2 min-w-56 rounded-[14px] p-2">
                   <button
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm text-slate-200 transition hover:bg-white/10 hover:text-white",
-                      windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized) && "bg-sky-400/15 text-white"
+                      "desktop-menu-item flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-sm",
+                      windows.some((windowItem) => windowItem.kind === "route" && !windowItem.minimized) && "desktop-menu-item-active"
                     )}
                     onClick={() => {
                       openRouteWindow();
@@ -945,14 +1120,34 @@ export function OsShell({
                     <Monitor className="h-4 w-4" />
                     <span className="flex-1">Admin Control Plane</span>
                   </button>
-
                 </div>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      ) : null}
+
+        <div className="mx-3 flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto">
+          {minimizedWindows.map((windowItem) => {
+            const WindowIcon = getWindowIcon(windowItem, routeDescriptor);
+
+            return (
+              <button
+                key={`minimized-${windowItem.id}`}
+                className="desktop-minimized-window"
+                onClick={() => bringToFront(windowItem.id)}
+                title={`Restore ${windowItem.title}`}
+                type="button"
+              >
+                <WindowIcon className="h-4 w-4" />
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">
+          <Link className="desktop-status-chip gap-2 px-3 text-xs transition" href="/?public=1">
+            Home
+          </Link>
           <button className="desktop-status-chip" type="button">
             <Search className="h-4 w-4" />
           </button>
@@ -961,7 +1156,7 @@ export function OsShell({
           </button>
           <div className="relative" ref={calendarRef}>
             <button
-              className={cn("desktop-status-chip gap-2 px-3 text-xs text-slate-200", calendarOpen && "bg-white/15 text-white")}
+              className={cn("desktop-status-chip gap-2 px-3 text-xs", calendarOpen && "desktop-status-chip-active")}
               onClick={() => setCalendarOpen((c) => !c)}
               type="button"
               suppressHydrationWarning
@@ -971,22 +1166,15 @@ export function OsShell({
             </button>
             {calendarOpen && mounted && now ? <CalendarPopover now={now} /> : null}
           </div>
-          <button
-            className="desktop-status-chip gap-2 px-3 text-xs font-medium text-slate-100 transition hover:bg-white/15"
-            onClick={() => openWindow("profile")}
-            type="button"
-          >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-sky-300 to-violet-300 text-[11px] font-bold text-slate-950">
-              {(userName ?? role).slice(0, 1).toUpperCase()}
-            </span>
-            {userName ?? role}
-          </button>
           <LogoutButton />
         </div>
       </header>
 
       <main className={cn("relative flex min-h-screen flex-col pt-11", uiPrefs.showDock ? "pb-28" : "pb-0")}>
-        <div className="relative flex-1 overflow-hidden bg-slate-950/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[2px]">
+        <div
+          className="desktop-workspace-surface relative flex-1 overflow-hidden"
+          style={{ zoom: uiPrefs.workspaceScale / 100 }}
+        >
           {windows.map((windowItem) => (
             <div key={windowItem.id} className="absolute inset-0" style={{ zIndex: windowItem.zIndex }}>
               <DesktopWindow
@@ -1007,9 +1195,17 @@ export function OsShell({
                 {windowItem.kind === "route" ? children : null}
                 {windowItem.kind === "sql-explorer" ? <QueryBuilderCard /> : null}
                 {windowItem.kind === "visualization-lab" ? <VisualizationCard /> : null}
-                {windowItem.kind === "data-studio" ? <DataStudioWindow onOpenImportWizard={() => openWindow("data-import")} /> : null}
+                {windowItem.kind === "data-studio" ? (
+                  <DataStudioWindow
+                    onOpenDataDictionaryWindow={() => openWindow("data-dictionary")}
+                    onOpenImportWizard={() => openWindow("data-import")}
+                  />
+                ) : null}
+                {windowItem.kind === "data-dictionary" ? <DataDictionaryWindow /> : null}
                 {windowItem.kind === "data-import" ? <DataImportWindow /> : null}
-                {windowItem.kind === "transform-studio" ? <TransformPipelineWindow role={role} /> : null}
+                {windowItem.kind === "transform-studio" ? (
+                  <TransformPipelineWindow onOpenImportWizard={() => openWindow("data-import")} role={role} />
+                ) : null}
                 {windowItem.kind === "profile" ? <UserProfileWindow role={role} userName={userName} /> : null}
 
                 {windowItem.kind === "about" ? <AboutStudioWindow siteName={siteName} /> : null}
@@ -1030,7 +1226,7 @@ export function OsShell({
 
       {uiPrefs.showDock ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-          <div className="desktop-dock pointer-events-auto">
+          <div className="desktop-dock pointer-events-auto" style={{ zoom: uiPrefs.dockScale / 100 }}>
             {dockApps.map((app) => {
               const isActive =
                 app.windowKind === undefined
@@ -1051,19 +1247,19 @@ export function OsShell({
                   }}
                   type="button"
                 >
-                  <span
-                    className={cn(
-                      "desktop-dock-icon",
-                      isActive && "border-sky-300/45 bg-sky-300/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_16px_26px_rgba(14,165,233,0.18)]"
-                    )}
-                  >
-                    <app.icon className="h-6 w-6 text-slate-100" />
-                  </span>
-                  {uiPrefs.dockLabels ? (
-                    <span className="text-[10px] font-medium text-slate-200 opacity-0 transition group-hover:opacity-100">
-                      {app.label}
+                    <span
+                      className={cn(
+                        "desktop-dock-icon",
+                        isActive && "desktop-dock-icon-active"
+                      )}
+                    >
+                      <app.icon className="h-6 w-6 text-[color:var(--desktop-dock-icon-foreground)]" />
                     </span>
-                  ) : null}
+                    {uiPrefs.dockLabels ? (
+                      <span className="desktop-dock-label text-[10px] font-medium opacity-0 transition group-hover:opacity-100">
+                        {app.label}
+                      </span>
+                    ) : null}
                 </button>
               );
             })}

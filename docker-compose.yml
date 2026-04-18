@@ -1,8 +1,11 @@
 services:
   app:
+    image: ${IRECONX_APP_IMAGE:-ireconx-app}
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        BASE_IMAGE: ${IRECONX_BASE_IMAGE:-andycyx/ireconx:base}
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/ireconx?schema=public}
       JWT_SECRET: ${JWT_SECRET:-replace-with-a-long-random-secret}
@@ -60,10 +63,12 @@ services:
         - action: rebuild
           path: package-lock.json
         - action: rebuild
+          path: Dockerfile.base
+        - action: rebuild
           path: Dockerfile.dev
         - action: rebuild
           path: prisma
-    command: sh -c "npm run db:generate && npm run db:push && npm run db:seed && npm run dev -- --hostname 0.0.0.0"
+    command: sh -c "npm run db:generate && npm run db:cleanup-unmanaged && npm run db:push && npm run db:seed && npm run dev -- --hostname 0.0.0.0"
 
   db:
     image: postgres:16-alpine

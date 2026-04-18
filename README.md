@@ -78,7 +78,20 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 6. Start the app with `npm run dev`.
 7. Open `http://localhost:3000` and sign in with the seeded admin account.
 
-For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on the host port configured by `APP_PORT` (the included `.env` uses `http://localhost:17080`), publish it on all host interfaces, rebuild the app image whenever code changes are detected, and seed the default admin only when the database does not already contain an admin account.
+For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on the host port configured by `APP_PORT` (the included `.env` uses `http://localhost:17080`), publish the app on all host interfaces, rebuild the app image whenever code changes are detected, and seed the default admin only when the database does not already contain an admin account. The app image now layers project changes on top of a reusable base image, and the app image includes the tidyverse runtime used by Transform Studio R nodes.
+
+### Docker image layering
+
+- `Dockerfile.base` builds the reusable dependency image with system packages, R runtime, Prisma tooling, and `node_modules`.
+- `Dockerfile.dev` starts from `IRECONX_BASE_IMAGE` and applies project-level updates on top of that base image.
+- The included Compose file defaults `IRECONX_BASE_IMAGE` to `andycyx/ireconx:base`.
+
+Build and push the base image with:
+
+```bash
+docker build -f Dockerfile.base -t andycyx/ireconx:base .
+docker push andycyx/ireconx:base
+```
 
 See [INSTALLATION.md](./INSTALLATION.md) for the full setup flow and environment details.
 

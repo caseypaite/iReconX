@@ -13,6 +13,10 @@ export type AiProviderFormValue = {
 };
 
 export type AiProviderFormMap = Record<PluginProviderId, AiProviderFormValue>;
+export type UserAiSettingsPayload = {
+  defaultProvider: PluginProviderId;
+  providers: AiProviderFormMap;
+};
 
 export const aiProviderCatalog: Record<
   PluginProviderId,
@@ -30,9 +34,9 @@ export const aiProviderCatalog: Record<
     label: "GitHub Copilot / Models",
     description: "Use your personal GitHub Models credentials when generating plugins for your own workspace.",
     endpointPlaceholder: "https://models.github.ai/inference/chat/completions",
-    modelPlaceholder: "openai/gpt-4.1",
+    modelPlaceholder: "anthropic/claude-3.5-sonnet",
     defaultEndpoint: "https://models.github.ai/inference/chat/completions",
-    defaultModel: "openai/gpt-4.1",
+    defaultModel: "anthropic/claude-3.5-sonnet",
     headers: {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28"

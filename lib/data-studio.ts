@@ -21,7 +21,7 @@ export type StudioImportColumnSpec = {
   targetType: StudioImportColumnType;
 };
 
-export type StudioDatasetSourceKind = "upload" | "data-source-catalog";
+export type StudioDatasetSourceKind = "upload" | "data-source-catalog" | "generated";
 
 export type StudioDataset = {
   label: string;
@@ -34,12 +34,18 @@ export type StudioDataset = {
 
 export type AccessibleStudioSource = {
   id: string;
+  sourceKind: "governed-source" | "persistent-import";
   name: string;
   description: string;
+  dataDictionary: string;
+  canEditDataDictionary: boolean;
   type: string;
+  tableName: string;
   owner: string;
   accessScope: string;
   sharedUsers: number;
+  rowCount: number | null;
+  columnCount: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -441,11 +447,16 @@ export function buildSourceCatalogDataset(
 ): StudioDataset {
   return createDatasetFromRecords(
     sources.map((source) => ({
+      Category: source.sourceKind === "persistent-import" ? "Persistent import" : "Governed source",
       Name: source.name,
       Type: source.type,
+      Table: source.tableName,
       Description: source.description,
+      "Data Dictionary": source.dataDictionary,
       Owner: source.owner,
       Scope: source.accessScope,
+      Rows: source.rowCount,
+      Columns: source.columnCount,
       "Shared Users": source.sharedUsers,
       Created: source.createdAt,
       Updated: source.updatedAt,

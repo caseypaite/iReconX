@@ -132,6 +132,7 @@ export function DataImportWindow() {
   const setWorkspaceDataset = useStudioWorkspaceStore((state) => state.setDataset);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importConsoleEntries, setImportConsoleEntries] = useState<string[]>([]);
   const [importWizardStep, setImportWizardStep] = useState<ImportWizardStep>(1);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importSheetName, setImportSheetName] = useState("");
@@ -150,6 +151,16 @@ export function DataImportWindow() {
       return accumulator;
     }, {})
   );
+
+  function appendImportConsoleEntry(message: string) {
+    const timestamp = new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
+    setImportConsoleEntries((current) => [...current.slice(-19), `[${timestamp}] ${message}`]);
+  }
 
   useEffect(() => {
     if (!importFile || importMatrix.length === 0 || importColumnSpecs.length === 0) {
@@ -179,8 +190,12 @@ export function DataImportWindow() {
       return;
     }
 
+    setImportConsoleEntries([]);
+
     if (file.size > DATA_STUDIO_FILE_LIMIT_BYTES) {
-      setError("Files larger than 20 MB are not allowed.");
+      const message = "Files larger than 20 MB are not allowed.";
+      appendImportConsoleEntry(`[inspect] ${file.name}: ${message}`);
+      setError(message);
       event.target.value = "";
       return;
     }
@@ -215,7 +230,9 @@ export function DataImportWindow() {
       setImportMessage(null);
       setError(null);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to inspect the uploaded file.");
+      const message = caughtError instanceof Error ? caughtError.message : "Unable to inspect the uploaded file.";
+      appendImportConsoleEntry(`[inspect] ${file.name}: ${message}`);
+      setError(message);
     } finally {
       event.target.value = "";
     }
@@ -232,6 +249,7 @@ export function DataImportWindow() {
     setImportLabel("");
     setImportTableName("");
     setImportToPersistent(false);
+    setImportConsoleEntries([]);
     if (!options?.preserveMessage) {
       setImportMessage(null);
     }
@@ -245,10 +263,13 @@ export function DataImportWindow() {
 
   async function submitImportWizard() {
     if (!importFile) {
-      setError("Choose a CSV or Excel file first.");
+      const message = "Choose a CSV or Excel file first.";
+      appendImportConsoleEntry(`[upload] ${message}`);
+      setError(message);
       return;
     }
 
+    setImportConsoleEntries([]);
     setUploading(true);
     setError(null);
     setImportMessage(null);
@@ -272,7 +293,10 @@ export function DataImportWindow() {
       const body = (await response.json().catch(() => null)) as { error?: string; dataset?: StudioDataset } | null;
 
       if (!response.ok || !body?.dataset) {
-        throw new Error(body?.error ?? "Unable to load the uploaded file.");
+        throw new Error(
+          body?.error ??
+            `Upload failed with ${response.status} ${response.statusText || "Unknown status"}: missing dataset payload.`
+        );
       }
 
       setWorkspaceDataset(body.dataset, "import-wizard");
@@ -281,9 +305,12 @@ export function DataImportWindow() {
           ? `File imported into table ${String(body.dataset.metadata?.temporaryTableName ?? importTableName)} and copied into persistent table ${String(body.dataset.metadata?.persistentTableName ?? importTableName)}.`
           : `File imported into temporary analysis table ${String(body.dataset.metadata?.temporaryTableName ?? importTableName)}.`
       );
+      setImportConsoleEntries([]);
       resetImportWizard({ preserveMessage: true });
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to load the uploaded file.");
+      const message = caughtError instanceof Error ? caughtError.message : "Unable to load the uploaded file.";
+      appendImportConsoleEntry(`[upload] ${importFile.name}: ${message}`);
+      setError(message);
     } finally {
       setUploading(false);
     }
@@ -465,6 +492,14 @@ export function DataImportWindow() {
         ) : null}
         {importMessage ? <p className="mt-3 text-[11px] text-emerald-300">{importMessage}</p> : null}
         {error ? <p className="mt-3 text-[11px] text-rose-300">{error}</p> : null}
+        {importConsoleEntries.length > 0 ? (
+          <div className="mt-3 border border-white/10 bg-slate-950/40 p-2">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Wizard console</p>
+            <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-[10px] text-slate-300">
+              {importConsoleEntries.join("\n")}
+            </pre>
+          </div>
+        ) : null}
       </Card>
     </div>
   );

@@ -1,19 +1,17 @@
 "use client";
 
-import type { ResultViewerPreview } from "@/lib/ai/result-viewer";
+import type { PluginExecutionResult } from "@/lib/plugins/protocol";
+import { getResultViewerVisualData, type ResultViewerPreview } from "@/lib/ai/result-viewer";
 import { Button } from "@/components/ui/button";
 
 type ResultPreviewViewerProps = {
   mode: "table" | "visual";
   onModeChange: (mode: "table" | "visual") => void;
   preview: ResultViewerPreview;
+  result: PluginExecutionResult;
 };
 
 const compactButtonClassName = "h-auto rounded-none px-2 py-1 text-[11px]";
-
-function isNumericValue(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
 
 function ResultPreviewTable({ preview }: { preview: ResultViewerPreview }) {
   if (preview.table.columns.length === 0 || preview.table.rows.length === 0) {
@@ -52,31 +50,38 @@ function ResultPreviewTable({ preview }: { preview: ResultViewerPreview }) {
   );
 }
 
-function ResultPreviewVisual({ preview }: { preview: ResultViewerPreview }) {
+function ResultPreviewVisual({ preview, result }: { preview: ResultViewerPreview; result: PluginExecutionResult }) {
   if (!preview.visual) {
     return <p className="text-xs text-slate-400">No visual preview is available for this result.</p>;
   }
 
-  if (preview.visual.type === "metric-list") {
+  const visualData = getResultViewerVisualData(result, preview);
+
+  if (!visualData) {
+    return <p className="text-xs text-slate-400">The AI recommendation could not be rendered from the available local result data.</p>;
+  }
+
+  if (visualData.type === "metric-list") {
     return (
-      <div className="grid gap-2 md:grid-cols-2">
-        {preview.visual.metrics.map((metric) => (
-          <div key={metric.label} className="rounded-none border border-white/10 bg-slate-950/25 p-3">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{metric.label}</p>
-            <p className="mt-2 text-sm font-medium text-white">{metric.value}</p>
-          </div>
-        ))}
+      <div className="space-y-3">
+        <div className="rounded-none border border-white/10 bg-slate-950/25 p-3">
+          <p className="text-sm font-medium text-white">{preview.visual.title}</p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-300">{preview.visual.description}</p>
+          {preview.visual.rationale ? <p className="mt-2 text-[11px] text-slate-400">Why this chart: {preview.visual.rationale}</p> : null}
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          {visualData.metrics.map((metric) => (
+            <div key={metric.label} className="rounded-none border border-white/10 bg-slate-950/25 p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{metric.label}</p>
+              <p className="mt-2 text-sm font-medium text-white">{metric.value}</p>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  const data = preview.visual.rows
-    .filter((row) => isNumericValue(row[preview.visual!.yKey]))
-    .slice(0, 12)
-    .map((row) => ({
-      label: String(row[preview.visual!.xKey] ?? ""),
-      value: row[preview.visual!.yKey] as number
-    }));
+  const data = visualData.rows;
 
   if (data.length === 0) {
     return <p className="text-xs text-slate-400">The visual preview did not include plottable numeric data.</p>;
@@ -117,6 +122,11 @@ function ResultPreviewVisual({ preview }: { preview: ResultViewerPreview }) {
 
   return (
     <div className="space-y-3">
+      <div className="rounded-none border border-white/10 bg-slate-950/25 p-3">
+        <p className="text-sm font-medium text-white">{preview.visual.title}</p>
+        <p className="mt-2 text-xs leading-relaxed text-slate-300">{preview.visual.description}</p>
+        {preview.visual.rationale ? <p className="mt-2 text-[11px] text-slate-400">Why this chart: {preview.visual.rationale}</p> : null}
+      </div>
       <svg className="w-full rounded-none border border-white/10 bg-slate-950/25" viewBox={`0 0 ${width} ${height}`}>
         <polyline fill="none" points={points} stroke="rgba(56,189,248,0.95)" strokeWidth="3" />
         {data.map((entry, index) => {
@@ -140,7 +150,8 @@ function ResultPreviewVisual({ preview }: { preview: ResultViewerPreview }) {
 export function ResultPreviewViewer({
   mode,
   onModeChange,
-  preview
+  preview,
+  result
 }: ResultPreviewViewerProps) {
   const canShowVisual = Boolean(preview.visual);
 
@@ -166,7 +177,7 @@ export function ResultPreviewViewer({
           Table
         </Button>
       </div>
-      {mode === "visual" && canShowVisual ? <ResultPreviewVisual preview={preview} /> : <ResultPreviewTable preview={preview} />}
+      {mode === "visual" && canShowVisual ? <ResultPreviewVisual preview={preview} result={result} /> : <ResultPreviewTable preview={preview} />}
     </div>
   );
 }

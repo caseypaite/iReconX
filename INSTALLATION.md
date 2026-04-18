@@ -109,6 +109,7 @@ This setup:
 - runs the Next.js dev server on the host port set by `APP_PORT` (the included `.env` uses `http://localhost:17080`) and publishes it on all host interfaces
 - seeds the default admin on first boot and preserves database-managed credentials on later restarts
 - rebuilds the app image when code changes are detected, so container restarts keep using the latest baked-in code
+- layers app code changes on top of `IRECONX_BASE_IMAGE` instead of rebuilding the full dependency stack every time
 
 For the Compose dev instance, prefer a `.env` that points `DATABASE_URL` at `db`, for example:
 
@@ -137,6 +138,25 @@ Use the seeded admin credentials:
 If the account has a registered mobile number, the app sends a 6-digit OTP through the configured external provider before sign-in completes. After verification, admins are redirected to `/admin`; standard users are redirected to `/dashboard`.
 
 ## Common workflows
+
+### Containerized development
+
+```bash
+docker compose up --build --watch
+```
+
+This launches the Next.js app and PostgreSQL. The app container includes the tidyverse runtime used by Transform Studio tidyverse nodes.
+
+### Base image workflow
+
+Build and push the reusable base image:
+
+```bash
+docker build -f Dockerfile.base -t andycyx/ireconx:base .
+docker push andycyx/ireconx:base
+```
+
+The Compose app service uses `IRECONX_BASE_IMAGE` and defaults it to `andycyx/ireconx:base`, so later app rebuilds only need to apply repository updates on top of that base.
 
 ### Production build
 

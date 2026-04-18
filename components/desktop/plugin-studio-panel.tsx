@@ -6,9 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { UserAiSettingsPayload } from "@/lib/ai/provider-config";
 import { HoverHelperLabel } from "@/components/ui/hover-helper-label";
 import { HoverSubtitleTitle } from "@/components/ui/hover-subtitle-title";
 import { Input } from "@/components/ui/input";
+import { parsePluginHtmlInputFields } from "@/lib/plugins/html-inputs";
+import { readPluginManifest } from "@/lib/plugins/manifest";
 import { runPluginInBrowser } from "@/lib/plugins/browser-runtime";
 import { executePluginChain } from "@/lib/plugins/execution";
 import type {
@@ -93,6 +96,8 @@ export function PluginStudioPanel({
     () => chainIds.map((id) => plugins.find((plugin) => plugin.id === id)).filter((plugin): plugin is PluginDefinitionRecord => Boolean(plugin)),
     [chainIds, plugins]
   );
+  const draftManifest = useMemo(() => readPluginManifest(draft.sourceCode), [draft.sourceCode]);
+  const draftInputFields = useMemo(() => parsePluginHtmlInputFields(draftManifest?.inputForm), [draftManifest?.inputForm]);
 
   const loadPlugins = useCallback(async () => {
     setLoading(true);
@@ -119,6 +124,33 @@ export function PluginStudioPanel({
   useEffect(() => {
     void loadPlugins();
   }, [loadPlugins]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDefaultProvider() {
+      try {
+        const response = await fetch("/api/account/ai-settings", {
+          cache: "no-store"
+        });
+        const payload = (await response.json().catch(() => null)) as (UserAiSettingsPayload & { error?: string }) | null;
+
+        if (!response.ok || !payload?.defaultProvider || cancelled) {
+          return;
+        }
+
+        setProvider(payload.defaultProvider);
+      } catch {
+        // Keep the built-in default when account settings are unavailable.
+      }
+    }
+
+    void loadDefaultProvider();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!editorPlugin) {
@@ -460,7 +492,7 @@ export function PluginStudioPanel({
           <div className="flex items-start justify-between gap-3">
             <div>
               <HoverSubtitleTitle
-                subtitle="Generate JavaScript plugins that follow the iReconX plugin protocol."
+                subtitle="Generate JavaScript plugins that follow the iReconX plugin protocol, including optional workflow HTML inputs."
                 title="AI plugin generator"
               />
             </div>
@@ -494,6 +526,9 @@ export function PluginStudioPanel({
               {generatePending ? "Generating…" : "Generate plugin"}
             </Button>
           </div>
+          {prompt.trim().length === 0 ? (
+            <p className="mt-2 text-[11px] text-slate-400">Enter a prompt to enable plugin generation.</p>
+          ) : null}
           <textarea
             className={`${textAreaClassName} mt-2`}
             onChange={(event) => setPrompt(event.target.value)}
@@ -504,7 +539,7 @@ export function PluginStudioPanel({
             <div className="border border-white/10 bg-slate-950/25 p-2">
               <div className="group/dataset-context relative inline-flex max-w-full">
                 <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Dataset context</p>
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 w-max max-w-xs -translate-x-1/2 rounded-md border border-white/15 bg-slate-950/95 px-2 py-1 text-xs leading-tight text-slate-200 opacity-0 shadow-lg shadow-slate-950/40 transition-opacity duration-150 group-hover/dataset-context:opacity-100">
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 w-max max-w-xs -translate-x-1/2 rounded-md border border-white/15 bg-slate-950/95 px-2 py-1 text-xs leading-tight text-slate-200 opacity-0 shadow-lg shadow-slate-950/40 transition-opacity duration-150 group-hover/dataset-context:opacity-100">
                   {dataset?.label ?? "No dataset loaded"}
                 </div>
               </div>
@@ -523,7 +558,7 @@ export function PluginStudioPanel({
           <div className="flex items-start justify-between gap-3">
             <div>
               <HoverSubtitleTitle
-                subtitle="Edit the generated source, then save it as a reusable plugin."
+                subtitle="Edit the generated source, then save it as a reusable plugin. Add plugin.inputForm to expose workflow controls in Transform Studio."
                 title="Plugin draft"
               />
             </div>
@@ -557,6 +592,20 @@ export function PluginStudioPanel({
             <Button className={compactButtonClassName} onClick={() => resetDraft()} type="button" variant="ghost">
               Reset draft
             </Button>
+          </div>
+          <div className="mt-2 border border-white/10 bg-slate-950/25 p-2">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Workflow inputs</p>
+            {draftInputFields.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {draftInputFields.map((field) => (
+                  <Badge key={field.name} className={compactBadgeClassName}>{`${field.name} · ${field.type}`}</Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-[11px] text-slate-400">
+                No workflow inputs detected. Add plugin.inputForm HTML with named controls to configure node params in Transform Studio.
+              </p>
+            )}
           </div>
           {draft.generationPrompt ? (
             <details className="mt-2 border border-white/10 bg-slate-950/25 p-2">
@@ -652,7 +701,7 @@ export function PluginStudioPanel({
               <div className="border border-white/10 bg-slate-950/25 p-2">
                 <div className="group/final-dataset relative inline-flex max-w-full">
                   <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Final dataset</p>
-                  <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 w-max max-w-xs -translate-x-1/2 rounded-md border border-white/15 bg-slate-950/95 px-2 py-1 text-xs leading-tight text-white opacity-0 shadow-lg shadow-slate-950/40 transition-opacity duration-150 group-hover/final-dataset:opacity-100">
+                  <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 w-max max-w-xs -translate-x-1/2 rounded-md border border-white/15 bg-slate-950/95 px-2 py-1 text-xs leading-tight text-white opacity-0 shadow-lg shadow-slate-950/40 transition-opacity duration-150 group-hover/final-dataset:opacity-100">
                     {execution.finalDataset?.label ?? "No dataset returned"}
                   </div>
                 </div>
