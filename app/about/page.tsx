@@ -16,8 +16,8 @@ export default async function AboutPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-300">{siteName}</p>
               <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">About the platform architecture</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">
-                This page summarizes the technology choices, libraries, and application structure currently used across the public site,
-                the protected desktop workspace, and the admin governance plane.
+                This page summarizes the technology choices, workflow runtimes, and application structure currently used across the public site,
+                the protected desktop workspace, the Data Dictionary Manager, and the admin governance plane.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -91,7 +91,7 @@ export default async function AboutPage() {
             </div>
             <div>
               <h2 className="text-2xl font-semibold text-white">Libraries used by the project</h2>
-              <p className="mt-1 text-sm text-slate-400">Core packages that shape routing, UI, persistence, security, and data handling.</p>
+              <p className="mt-1 text-sm text-slate-400">Core packages that shape routing, desktop UX, persistence, security, AI integration, and governed data handling.</p>
             </div>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -125,8 +125,8 @@ export default async function AboutPage() {
             <article className="rounded-[22px] border border-white/10 bg-slate-950/35 p-5">
               <h3 className="text-base font-semibold text-white">Data and workflow runtime</h3>
               <p className="mt-3 text-sm leading-6 text-slate-400">
-                Prisma and PostgreSQL back users, audit data, governed sources, temporary analysis tables, and persistent imports.
-                Transform Studio combines browser-safe JavaScript nodes with server-executed tidyverse steps for governed source access.
+                Prisma and PostgreSQL back users, audit data, governed sources, temporary analysis tables, persistent imports, and source-level dictionary metadata.
+                Transform Studio combines browser-safe JavaScript nodes with server-executed tidyverse steps, while the Data Dictionary Manager captures per-column business meaning for AI-assisted generation.
               </p>
             </article>
           </div>

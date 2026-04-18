@@ -32,8 +32,14 @@ export const featureGroups: readonly MarketingFeature[] = [
   {
     title: "Visual transform pipeline",
     description:
-      "Drag plugin blocks into a graph, connect execution paths, inspect node output, and iterate with user-owned AI-assisted result previews.",
+      "Drag plugin blocks into a graph, connect execution paths, inspect node output, and mix JavaScript plus tidyverse steps inside one governed workflow.",
     icon: Workflow
+  },
+  {
+    title: "Source data dictionary management",
+    description:
+      "Capture source overviews and per-column meaning from a dedicated Data Dictionary Manager so AI-assisted transforms use business context, not just raw schema.",
+    icon: Database
   },
   {
     title: "Governance and security",
@@ -63,6 +69,12 @@ export const latestUpdates: readonly MarketingFeature[] = [
     icon: Database
   },
   {
+    title: "Source-aware data dictionaries",
+    description:
+      "The dedicated Data Dictionary Manager stores source summaries and per-column meaning, then forwards that business context into tidyverse AI generation.",
+    icon: Layers3
+  },
+  {
     title: "Personal AI provider controls",
     description:
       "Plugin generation and result previews now work with user-scoped GitHub Copilot / Models, Gemini, and Mistral settings so each workspace keeps its own credentials.",
@@ -81,11 +93,15 @@ export const stackGroups: readonly MarketingStackGroup[] = [
   },
   {
     area: "Data and persistence",
-    items: ["Prisma ORM", "PostgreSQL", "XLSX import parsing"]
+    items: ["Prisma ORM", "PostgreSQL", "XLSX import parsing", "Persistent import storage"]
   },
   {
     area: "Security and validation",
     items: ["jose JWT sessions", "bcryptjs", "Zod"]
+  },
+  {
+    area: "Workflow runtimes",
+    items: ["Node.js", "Local R runtime", "dbplyr", "DBI"]
   },
   {
     area: "Client state and data flows",
@@ -127,6 +143,10 @@ export const libraryHighlights: readonly MarketingLibraryHighlight[] = [
     detail: "Spreadsheet inspection, sampling, and import-wizard parsing."
   },
   {
+    name: "R + tidyverse packages",
+    detail: "Server-side tidyverse execution for governed source transforms and previews."
+  },
+  {
     name: "zustand",
     detail: "Shared desktop and studio workspace state across floating windows."
   },
@@ -147,7 +167,7 @@ export const libraryHighlights: readonly MarketingLibraryHighlight[] = [
 export const workflowSteps = [
   "Authenticate with role-aware access and optional OTP enforcement.",
   "Import files with typed column conversion, then keep them temporary or copy them into the persistent import store.",
-  "Load governed sources or persistent imported tables into Data Studio and Transform Studio workspaces.",
+  "Load governed sources or persistent imported tables into Data Studio and define source-level column meaning in the Data Dictionary Manager.",
   "Run hybrid JavaScript and tidyverse workflow graphs, inspect node output, and publish final datasets back to Data Studio.",
   "Generate plugins and AI-assisted result previews with your own GitHub Copilot / Models, Gemini, or Mistral settings.",
   "Manage users, sources, and operational controls from the admin plane."
@@ -164,7 +184,7 @@ export const applicationAreas = [
   {
     title: "Analyst workspace",
     items: [
-      "Desktop shell with overlapping windows, Data Studio, Transform Studio, and import tooling",
+      "Desktop shell with overlapping windows, Data Studio, Data Dictionary Manager, Transform Studio, and import tooling",
       "Summaries, pivots, plugin execution, tidyverse workflows, and AI-assisted result previews"
     ]
   },

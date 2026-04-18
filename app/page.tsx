@@ -14,15 +14,15 @@ import {
 import { loadSiteName } from "@/lib/site-name";
 
 const quickStats = [
-  { label: "Workflow surfaces", value: "4", detail: "Data Studio, Import, Transform, Admin" },
+  { label: "Workspace surfaces", value: "5", detail: "Data Studio, Dictionary, Import, Transform, Admin" },
   { label: "Primary AI providers", value: "3", detail: "GitHub Models, Gemini, Mistral" },
-  { label: "Core platform layers", value: "5", detail: "App, data, auth, validation, client state" }
+  { label: "Layered container path", value: "2", detail: "Reusable base image plus app overlay" }
 ] as const;
 
 const trustPoints = [
   "Role-aware routing and server-enforced sessions",
   "Encrypted governed connector settings",
-  "OTP-aware authentication and audit coverage"
+  "Source dictionaries and schema-aware AI handoff"
 ] as const;
 
 export default async function HomePage({
@@ -74,16 +74,16 @@ export default async function HomePage({
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs text-sky-200">
                 <Sparkles className="h-3.5 w-3.5" />
-                Enterprise-ready analytics studio
+                Desktop analytics and governed workflow studio
               </div>
               <div className="space-y-4">
                 <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
                   Govern data workflows from one professional workspace.
                 </h1>
                 <p className="max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-                  {siteName} combines a floating-window analyst desktop, persistent-import aware Data Studio, hybrid
-                  JavaScript and tidyverse transforms, and an audited admin control plane on a secure Next.js,
-                  Prisma, and PostgreSQL foundation.
+                  {siteName} combines a floating-window analyst desktop, persistent-import aware Data Studio, a dedicated
+                  Data Dictionary Manager, hybrid JavaScript and tidyverse transforms, and an audited admin control plane
+                  on a secure Next.js, Prisma, and PostgreSQL foundation.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -112,7 +112,7 @@ export default async function HomePage({
                 <div>
                   <h2 className="text-2xl font-semibold text-white">Platform overview</h2>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                    Designed for teams that need governed access, repeatable transforms, and a workspace that supports parallel analyst activity.
+                      Designed for teams that need governed access, business-aware source definitions, repeatable transforms, and a workspace that supports parallel analyst activity.
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
@@ -166,7 +166,7 @@ export default async function HomePage({
                 </div>
                 <div>
                   <h2 className="text-2xl font-semibold text-white">Latest updates</h2>
-                  <p className="mt-1 text-sm text-slate-400">Recent workflow capabilities now shipping across the public and protected experience.</p>
+                    <p className="mt-1 text-sm text-slate-400">Recent workflow capabilities shipping across the public site, analyst desktop, and admin-controlled runtime.</p>
                 </div>
               </div>
               <div className="mt-6 space-y-3">
@@ -195,7 +195,7 @@ export default async function HomePage({
                 </div>
                 <div>
                   <h2 className="text-2xl font-semibold text-white">Technology stack</h2>
-                  <p className="mt-1 text-sm text-slate-400">Framework, security, state, and persistence layers used across the product.</p>
+                  <p className="mt-1 text-sm text-slate-400">Framework, workflow runtime, security, state, and persistence layers used across the product.</p>
                 </div>
               </div>
               <div className="mt-6 space-y-3">
@@ -224,7 +224,7 @@ export default async function HomePage({
             </div>
             <h2 className="mt-4 text-2xl font-semibold text-white">Typical delivery flow</h2>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              The product is organized around a controlled path from access and ingestion through transformation and governance.
+              The product is organized around a controlled path from access and ingestion through source definition, transformation, and governance.
             </p>
             <div className="mt-6 space-y-2">
               {trustPoints.map((point) => (
@@ -281,8 +281,8 @@ export default async function HomePage({
                 Review the platform publicly, then move into the secure analyst or admin experience.
               </h2>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                Signed-in users still flow directly into their protected workspace by default, while dedicated public links can open the landing and About pages when needed.
-              </p>
+                 Signed-in users still flow directly into their protected workspace by default, while dedicated public links can open the landing and About pages when needed.
+               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link className="rounded-full bg-sky-400 px-5 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-sky-300" href="/login">

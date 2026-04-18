@@ -1,6 +1,6 @@
 # Installation
 
-This guide sets up iReconX locally with **Node.js 20+** and **PostgreSQL**.
+This guide sets up iReconX locally with **Node.js 20+** and **PostgreSQL**, or with the layered Docker workflow that uses the published base image.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ SEED_ADMIN_MOBILE_NUMBER=""
 - `OTP_SECRET`: optional secret for OTP challenge signing. If omitted, the app falls back to `JWT_SECRET`.
 - `SITE_NAME`: optional brand name displayed in auth screens, shell chrome, metadata, and OTP messages.
 - `SITE_URL`: canonical public origin for the app. Set this to your domain, such as `https://ireconx.sigstack.com`, when exposing the site outside localhost.
-- `AI_COPILOT_*`, `AI_GEMINI_*`, and `AI_MISTRAL_*`: optional AI provider credentials, endpoints, and model IDs used by the Data Studio plugin generator.
+- `AI_COPILOT_*`, `AI_GEMINI_*`, and `AI_MISTRAL_*`: optional AI provider credentials, endpoints, and model IDs used by plugin generation, tidyverse AI generation, and result preview flows.
 - `OTP_MESSAGE_ENDPOINT`: full URL of the external message provider endpoint compatible with `POST /api/v1/message/single`.
 - `OTP_MESSAGE_API_KEY`: API key sent as `x-api-key` to the external message provider.
 - `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`: used by the seed script to create the initial admin account when the database does not already contain an admin.
@@ -110,12 +110,14 @@ This setup:
 - seeds the default admin on first boot and preserves database-managed credentials on later restarts
 - rebuilds the app image when code changes are detected, so container restarts keep using the latest baked-in code
 - layers app code changes on top of `IRECONX_BASE_IMAGE` instead of rebuilding the full dependency stack every time
+- runs the local tidyverse runtime in the main app container for Transform Studio tidyverse execution
 
 For the Compose dev instance, prefer a `.env` that points `DATABASE_URL` at `db`, for example:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@db:5432/ireconx?schema=public"
 APP_PORT="17080"
+IRECONX_BASE_IMAGE="andycyx/ireconx:base"
 SITE_NAME="iReconX Analytics Studio"
 SITE_URL="https://ireconx.sigstack.com"
 AI_COPILOT_ENDPOINT="https://models.github.ai/inference/chat/completions"
@@ -145,7 +147,7 @@ If the account has a registered mobile number, the app sends a 6-digit OTP throu
 docker compose up --build --watch
 ```
 
-This launches the Next.js app and PostgreSQL. The app container includes the tidyverse runtime used by Transform Studio tidyverse nodes.
+This launches the Next.js app and PostgreSQL. The app container includes the tidyverse runtime used by Transform Studio tidyverse nodes, the Data Dictionary Manager, and the desktop shell windows used across the analyst workspace.
 
 ### Base image workflow
 
@@ -157,6 +159,14 @@ docker push andycyx/ireconx:base
 ```
 
 The Compose app service uses `IRECONX_BASE_IMAGE` and defaults it to `andycyx/ireconx:base`, so later app rebuilds only need to apply repository updates on top of that base.
+
+### What ships in the current workspace
+
+- Data Studio for governed sources, persistent imports, pivots, and summaries
+- Data Dictionary Manager for per-column source meanings
+- Transform Studio for JavaScript and tidyverse workflow graphs
+- User-scoped AI provider settings for GitHub Copilot / Models, Gemini, and Mistral
+- Admin governance for users, source registration, site identity, and audit review
 
 ### Production build
 

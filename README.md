@@ -1,6 +1,6 @@
 # iReconX
 
-iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Prisma**, and **PostgreSQL**. It ships with cookie-based JWT authentication, admin/user role separation, encrypted data source credentials, and audited access to the protected analytics workspace.
+iReconX is a desktop-style analytics platform built with **Next.js 14 App Router**, **Prisma**, and **PostgreSQL**. It combines governed source access, persistent imports, visual JavaScript and tidyverse workflows, AI-assisted generation, and audited admin controls in one secure workspace.
 
 ## Documentation
 
@@ -9,12 +9,15 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 
 ## Highlights
 
-- **Protected analytics workspace** for query-building, metadata inspection, tabular previews, and visualization placeholders.
-- **Admin control plane** for user management, data source registration, audit review, and usage monitoring.
+- **Desktop analytics shell** with overlapping windows for Data Studio, Transform Studio, imports, utilities, and result viewers.
+- **Data Studio** for governed source browsing, persistent import reloads, pivoting, summarization, and source catalog inspection.
+- **Transform Studio** for hybrid JavaScript and tidyverse graphs with server-side execution, schema-aware AI generation, and result publishing back to Data Studio.
+- **Data Dictionary Manager** for source-level business meaning and per-column descriptions that flow into tidyverse AI generation.
+- **Admin control plane** for user management, data source registration, audit review, branding, and AI provider governance.
 - **Role-based access control** with `ADMIN` and `USER` roles enforced in middleware and server-side API helpers.
 - **Conditional login OTP** for users with a registered mobile number, delivered through an external WhatsApp-compatible message endpoint.
 - **Encrypted data source configuration** persisted with AES-256-GCM before being stored in the database.
-- **Audit logging** for authentication activity, user lifecycle changes, data source creation, and query execution events.
+- **Audit logging** for authentication activity, user lifecycle changes, data source creation, and governed execution events.
 
 ## Stack
 
@@ -30,14 +33,18 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 ## Application areas
 
 - `app/(auth)` - login experience and public entry flow.
-- `app/(protected)/dashboard` - authenticated analyst workspace.
+- `app/(protected)/dashboard` - authenticated analyst workspace and desktop shell entry.
 - `app/(protected)/admin` - admin-only overview and governance pages.
 - `app/api/auth` - login, logout, and current-user session endpoints.
-- `app/api/admin` - admin-only user, data source, audit, and resource APIs.
-- `app/api/explorer` - authenticated explorer execution endpoints.
+- `app/api/admin` - admin-only user, data source, audit, identity, and resource APIs.
+- `app/api/explorer` - authenticated data studio, import, dictionary, and explorer endpoints.
+- `app/api/transform-studio` - workflow persistence, run, tidyverse console, and AI generation endpoints.
+- `components/desktop` - floating-window shell, studios, utilities, and public-facing desktop UX.
+- `lib/tidyverse` - governed source handoff, schema introspection, and local R execution bridge.
+- `lib/transform-studio` - workflow protocol, execution planning, and tidyverse AI prompt building.
 - `lib/auth` - token signing, cookie helpers, and route/session enforcement.
 - `lib/security` - encryption helpers for sensitive connection payloads.
-- `prisma/schema.prisma` - persistence model for users, data sources, and audit logs.
+- `prisma/schema.prisma` - persistence model for users, sources, imports, settings, and audit logs.
 
 ## Core behavior
 
@@ -66,7 +73,8 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 - Admins can create, update, deactivate, and delete users.
 - Admins can register per-user mobile numbers to enable login OTP delivery.
 - Admins can register governed data sources without exposing raw configuration values in database rows.
-- Audit records capture login, logout, user management, data source creation, and query execution events.
+- Data dictionaries can be defined at the source level and reused by downstream AI-assisted transforms.
+- Audit records capture login, logout, user management, data source creation, and governed execution events.
 
 ## Quick start
 
@@ -78,13 +86,14 @@ iReconX is a secure analytics studio built with **Next.js 14 App Router**, **Pri
 6. Start the app with `npm run dev`.
 7. Open `http://localhost:3000` and sign in with the seeded admin account.
 
-For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on the host port configured by `APP_PORT` (the included `.env` uses `http://localhost:17080`), publish the app on all host interfaces, rebuild the app image whenever code changes are detected, and seed the default admin only when the database does not already contain an admin account. The app image now layers project changes on top of a reusable base image, and the app image includes the tidyverse runtime used by Transform Studio R nodes.
+For a containerized dev workflow, run `docker compose up --build --watch` to start the app and Postgres on the host port configured by `APP_PORT` (the included `.env` uses `http://localhost:17080`), publish the app on all host interfaces, rebuild the app image whenever code changes are detected, and seed the default admin only when the database does not already contain an admin account. The app image now layers project changes on top of a reusable base image, and the app container includes the local tidyverse runtime used by Transform Studio R nodes.
 
 ### Docker image layering
 
 - `Dockerfile.base` builds the reusable dependency image with system packages, R runtime, Prisma tooling, and `node_modules`.
 - `Dockerfile.dev` starts from `IRECONX_BASE_IMAGE` and applies project-level updates on top of that base image.
 - The included Compose file defaults `IRECONX_BASE_IMAGE` to `andycyx/ireconx:base`.
+- This keeps day-to-day app rebuilds focused on repository updates instead of reinstalling the full runtime stack.
 
 Build and push the base image with:
 
@@ -122,7 +131,7 @@ See [INSTALLATION.md](./INSTALLATION.md) for the full setup flow and environment
 
 `SITE_NAME`, the AI provider settings, and `SITE_URL` can also be managed from the admin control panel under **Identities**. For a deployed domain, set `SITE_URL` to your full HTTPS origin, for example `https://ireconx.sigstack.com`.
 
-The Data Studio **Plugins** panel can generate chained JavaScript plugins using GitHub Copilot / Models, Gemini, or Mistral once at least one provider is configured.
+The platform supports user-scoped AI provider settings for GitHub Copilot / Models, Gemini, and Mistral. Those settings power plugin generation, tidyverse-step generation, and AI-assisted result previews.
 
 ## Available scripts
 
@@ -141,4 +150,4 @@ The Data Studio **Plugins** panel can generate chained JavaScript plugins using 
 ## Current limitations
 
 - Explorer query execution currently returns an accepted placeholder preview rather than connecting to a live warehouse.
-- Visualization and grid components are scaffolded for extension, not yet wired to a production analytics backend.
+- The Compose workflow is optimized for development; production deployment still requires a dedicated runtime, secrets management, and operations setup.
