@@ -10,6 +10,7 @@ dist/
 
 # production build
 build/
+production/
 
 # environment variables — never commit real secrets
 .env
@@ -44,4 +45,3 @@ Thumbs.db
 
 # TypeScript incremental build
 tsconfig.tsbuildinfo
-

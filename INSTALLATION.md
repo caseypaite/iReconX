@@ -160,6 +160,18 @@ docker push andycyx/ireconx:base
 
 The Compose app service uses `IRECONX_BASE_IMAGE` and defaults it to `andycyx/ireconx:base`, so later app rebuilds only need to apply repository updates on top of that base.
 
+### Production release candidate scaffold
+
+The repository also includes a production-oriented release candidate under `production/`:
+
+```bash
+cp production/env/app.env.example production/env/app.env
+docker compose -f production/docker-compose.yml --profile bootstrap run --rm bootstrap
+docker compose -f production/docker-compose.yml up -d --build
+```
+
+This layout runs the app behind Nginx, expects an external PostgreSQL database, and mounts `production/env/app.env` into the app container so admin settings persist to the runtime environment file instead of assuming a root-level local `.env`.
+
 ### What ships in the current workspace
 
 - Data Studio for governed sources, persistent imports, pivots, and summaries

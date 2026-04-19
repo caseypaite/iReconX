@@ -5,6 +5,7 @@ iReconX is a desktop-style analytics platform built with **Next.js 14 App Router
 ## Documentation
 
 - [Installation guide](./INSTALLATION.md)
+- [Production release candidate scaffold](./production/README.md)
 - [Security guide](./SECURITY.md)
 
 ## Highlights
@@ -150,4 +151,4 @@ The platform supports user-scoped AI provider settings for GitHub Copilot / Mode
 ## Current limitations
 
 - Explorer query execution currently returns an accepted placeholder preview rather than connecting to a live warehouse.
-- The Compose workflow is optimized for development; production deployment still requires a dedicated runtime, secrets management, and operations setup.
+- The repository now includes a release-candidate production scaffold under `production/`, but secrets management, TLS, backups, monitoring, and rollout operations still need environment-specific setup.

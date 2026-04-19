@@ -45,6 +45,16 @@ function quoteEnvValue(value: string) {
   return JSON.stringify(value);
 }
 
+function getEnvFilePath() {
+  const configuredPath = process.env.IRECONX_ENV_FILE?.trim();
+
+  if (!configuredPath) {
+    return path.join(process.cwd(), ".env");
+  }
+
+  return path.isAbsolute(configuredPath) ? configuredPath : path.join(process.cwd(), configuredPath);
+}
+
 function renderEnvFile(nextValues: AdminSettingValueMap, currentContent: string | null) {
   const existingLines = currentContent?.split(/\r?\n/) ?? [];
   const handledKeys = new Set<string>();
@@ -76,7 +86,7 @@ function renderEnvFile(nextValues: AdminSettingValueMap, currentContent: string 
 }
 
 async function readEnvFile() {
-  const envPath = path.join(process.cwd(), ".env");
+  const envPath = getEnvFilePath();
 
   try {
     return {
@@ -101,6 +111,7 @@ async function restoreEnvFile(envPath: string, content: string | null) {
     return;
   }
 
+  await fs.mkdir(path.dirname(envPath), { recursive: true });
   await fs.writeFile(envPath, content, "utf8");
 }
 
@@ -182,6 +193,7 @@ export async function updateAdminSettings(values: unknown, actorId: string) {
   const envFile = await readEnvFile();
   const nextEnvContent = renderEnvFile(nextValues, envFile.content);
 
+  await fs.mkdir(path.dirname(envFile.path), { recursive: true });
   await fs.writeFile(envFile.path, nextEnvContent, "utf8");
 
   try {

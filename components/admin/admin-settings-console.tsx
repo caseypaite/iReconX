@@ -116,7 +116,7 @@ export function AdminSettingsConsole({
 
       setFields(payload.fields);
       setValues(buildValueMap(payload.fields));
-      setMessage(`${activeSection.label} settings saved to the database and current .env file.`);
+      setMessage(`${activeSection.label} settings saved to the database and runtime environment file.`);
       setPending(false);
     } catch {
       setError("Unable to save admin settings.");
